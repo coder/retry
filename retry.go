@@ -32,10 +32,14 @@ func Timeout(delay time.Duration, timeout time.Duration, f func() error) error {
 }
 
 type Listener struct {
-	MaxDelay time.Duration
-	Logger   zap.Logger
+	Logger *zap.Logger
 	net.Listener
 }
+
+const (
+	initialListenerDelay = 5 * time.Millisecond
+	maxListenerDelay     = time.Second
+)
 
 func (l *Listener) Accept() (net.Conn, error) {
 	var delay time.Duration
@@ -45,11 +49,11 @@ func (l *Listener) Accept() (net.Conn, error) {
 			ne, ok := err.(net.Error)
 			if ok && ne.Temporary() {
 				if delay == 0 {
-					delay = 5 * time.Millisecond
+					delay = initialListenerDelay
 				} else {
 					delay *= 2
-					if delay > time.Second {
-						delay = time.Second
+					if delay > maxListenerDelay {
+						delay = maxListenerDelay
 					}
 				}
 				l.Logger.Error("failed to accept next connection",
