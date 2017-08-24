@@ -2,6 +2,7 @@
 package retry
 
 import (
+	"log"
 	"net"
 	"time"
 )
@@ -30,7 +31,7 @@ func Timeout(delay time.Duration, timeout time.Duration, f func() error) error {
 }
 
 type Listener struct {
-	LogTmpErr func(err error, retry time.Duration)
+	LogTmpErr func(err error, retryDelay time.Duration)
 	net.Listener
 }
 
@@ -40,22 +41,26 @@ const (
 )
 
 func (l *Listener) Accept() (net.Conn, error) {
-	var delay time.Duration
+	var retryDelay time.Duration
 	for {
 		c, err := l.Listener.Accept()
 		if err != nil {
 			ne, ok := err.(net.Error)
 			if ok && ne.Temporary() {
-				if delay == 0 {
-					delay = initialListenerDelay
+				if retryDelay == 0 {
+					retryDelay = initialListenerDelay
 				} else {
-					delay *= 2
-					if delay > maxListenerDelay {
-						delay = maxListenerDelay
+					retryDelay *= 2
+					if retryDelay > maxListenerDelay {
+						retryDelay = maxListenerDelay
 					}
 				}
-				l.LogTmpErr(err, delay)
-				time.Sleep(delay)
+				if l.LogTmpErr == nil {
+					log.Printf("retry: temp error accepting next connection: %v; retrying in %v", err, retryDelay)
+				} else {
+					l.LogTmpErr(err, retryDelay)
+				}
+				time.Sleep(retryDelay)
 				continue
 			}
 			return nil, err
