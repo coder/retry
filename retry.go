@@ -4,8 +4,6 @@ package retry
 import (
 	"net"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 // Attempts calls f attempts times until it doesn't return an error.
@@ -32,7 +30,7 @@ func Timeout(delay time.Duration, timeout time.Duration, f func() error) error {
 }
 
 type Listener struct {
-	Logger *zap.Logger
+	LogTmpErr func(err error, retry time.Duration)
 	net.Listener
 }
 
@@ -56,10 +54,7 @@ func (l *Listener) Accept() (net.Conn, error) {
 						delay = maxListenerDelay
 					}
 				}
-				l.Logger.Error("failed to accept next connection",
-					zap.Error(err),
-					zap.Duration("retrying", delay),
-				)
+				l.LogTmpErr(err, delay)
 				time.Sleep(delay)
 				continue
 			}

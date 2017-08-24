@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 func TestAttempts(t *testing.T) {
@@ -65,7 +64,7 @@ type testListener struct {
 
 func newTestListener(acceptFn func() (net.Conn, error)) net.Listener {
 	return &Listener{
-		Logger: zap.NewNop(),
+		LogTmpErr: func(err error, retry time.Duration) {},
 		Listener: &testListener{
 			acceptFn: acceptFn,
 		},
