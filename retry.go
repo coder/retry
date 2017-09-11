@@ -36,8 +36,14 @@ func Timeout(delay time.Duration, timeout time.Duration, f func() error) error {
 // interval and floor as the start interval.
 // Since calls to f may take an undefined amount of time, Backoff cannot guarantee
 // it will return by timeout.
+// If timeout is 0, it will run until the function returns a nil error.
 func Backoff(timeout time.Duration, ceil time.Duration, floor time.Duration, f func() error) error {
-	deadline := time.Now().Add(timeout)
+	var deadline time.Time
+	if timeout == 0 {
+		deadline = time.Now().AddDate(1337, 0, 0)
+	} else {
+		deadline = time.Now().Add(timeout)
+	}
 
 	delay := floor
 	var err error

@@ -84,6 +84,17 @@ func TestBackoff(t *testing.T) {
 		})
 		assert.WithinDuration(t, start.Add(time.Second), time.Now(), time.Millisecond*10)
 	})
+
+	t.Run("Run until nil error", func(t *testing.T) {
+		start := time.Now()
+		err := Backoff(0, time.Second*5, time.Millisecond*200, func() error {
+			if time.Now().Sub(start) > time.Second {
+				return nil
+			}
+			return io.EOF
+		})
+		require.NoError(t, err)
+	})
 }
 
 func TestBackoffContext(t *testing.T) {
