@@ -2,6 +2,7 @@
 package retry
 
 import (
+	"context"
 	"log"
 	"net"
 	"time"
@@ -28,6 +29,74 @@ func Timeout(delay time.Duration, timeout time.Duration, f func() error) error {
 		}
 	}
 	return err
+}
+
+func minDur(a, b time.Duration) time.Duration {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// Backoff implements an exponential backoff algorithm.
+// It calls f before timeout is exceeded using ceil as a maximum sleep
+// interval and floor as the start interval.
+// Since calls to f may take an undefined amount of time, Backoff cannot guarantee
+// it will return by timeout.
+func Backoff(timeout time.Duration, ceil time.Duration, floor time.Duration, f func() error) error {
+	deadline := time.Now().Add(timeout)
+
+	delay := floor
+	var err error
+
+	for {
+		err = f()
+		if err == nil {
+			return nil
+		}
+		// since we're about to sleep for delay, we may as well
+		// factor it into our deadline calculation.
+		if time.Now().Add(delay).After(deadline) {
+			return err
+		}
+		time.Sleep(delay)
+		if delay < ceil {
+			delay = delay * 2
+			delay = delay * 2
+			if delay > ceil {
+				delay = ceil
+			}
+		}
+	}
+}
+
+// BackoffContext implements an exponential backoff algorithm.
+// It calls f before the context is cancelled using ceil as a maximum sleep
+// interval and floor as the start interval.
+func BackoffContext(ctx context.Context, ceil time.Duration, floor time.Duration, f func() error) error {
+	delay := floor
+	var err error
+
+	for {
+		err = f()
+		if err == nil {
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return err
+		default:
+		}
+
+		time.Sleep(delay)
+		if delay < ceil {
+			delay = delay * 2
+			if delay > ceil {
+				delay = ceil
+			}
+		}
+	}
 }
 
 type Listener struct {

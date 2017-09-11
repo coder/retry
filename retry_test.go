@@ -1,6 +1,8 @@
 package retry
 
 import (
+	"context"
+	"io"
 	"testing"
 	"time"
 
@@ -55,6 +57,58 @@ func TestTimeout(t *testing.T) {
 			return nil
 		})
 		assert.WithinDuration(t, time.Now(), start, time.Millisecond)
+	})
+}
+
+func TestBackoff(t *testing.T) {
+	t.Parallel()
+
+	t.Run("return when nil", func(t *testing.T) {
+		var count int
+		err := Backoff(time.Minute, time.Second, time.Millisecond, func() error {
+			count++
+			if count == 10 {
+				return nil
+			}
+			return io.EOF
+		})
+		assert.Equal(t, 10, count)
+		assert.NoError(t, err)
+	})
+
+	t.Run("don't exceed deadline dramatically", func(t *testing.T) {
+		start := time.Now()
+		Backoff(time.Second, time.Millisecond*5, time.Millisecond, func() error {
+			time.Sleep(time.Millisecond * 5)
+			return io.EOF
+		})
+		assert.WithinDuration(t, start.Add(time.Second), time.Now(), time.Millisecond*10)
+	})
+}
+
+func TestBackoffContext(t *testing.T) {
+	t.Run("return when nil", func(t *testing.T) {
+		ctx, _ := context.WithTimeout(context.Background(), time.Minute)
+		var count int
+		err := BackoffContext(ctx, time.Second, time.Millisecond, func() error {
+			count++
+			if count == 10 {
+				return nil
+			}
+			return io.EOF
+		})
+		assert.Equal(t, 10, count)
+		assert.NoError(t, err)
+	})
+
+	t.Run("respect context cancellation", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		time.AfterFunc(time.Millisecond*100, cancel)
+		start := time.Now()
+		BackoffContext(ctx, time.Millisecond*5, time.Millisecond, func() error {
+			return io.EOF
+		})
+		assert.WithinDuration(t, start.Add(time.Millisecond*100), time.Now(), time.Millisecond*10)
 	})
 }
 
