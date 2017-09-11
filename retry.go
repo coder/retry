@@ -31,13 +31,6 @@ func Timeout(delay time.Duration, timeout time.Duration, f func() error) error {
 	return err
 }
 
-func minDur(a, b time.Duration) time.Duration {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // Backoff implements an exponential backoff algorithm.
 // It calls f before timeout is exceeded using ceil as a maximum sleep
 // interval and floor as the start interval.
