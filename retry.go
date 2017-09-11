@@ -62,7 +62,6 @@ func Backoff(timeout time.Duration, ceil time.Duration, floor time.Duration, f f
 		time.Sleep(delay)
 		if delay < ceil {
 			delay = delay * 2
-			delay = delay * 2
 			if delay > ceil {
 				delay = ceil
 			}
