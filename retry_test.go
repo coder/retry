@@ -18,7 +18,7 @@ func TestAttempts(t *testing.T) {
 		count := 0
 		start := time.Now()
 
-		Attempts(time.Millisecond, 5, func() error {
+		Attempts(5, time.Millisecond, func() error {
 			count++
 			return errors.Errorf("asdfasdf")
 		})
@@ -29,7 +29,7 @@ func TestAttempts(t *testing.T) {
 
 	t.Run("returns as soon as error is nil", func(t *testing.T) {
 		start := time.Now()
-		Attempts(time.Minute, 100, func() error {
+		Attempts(100, time.Minute, func() error {
 			return nil
 		})
 		assert.WithinDuration(t, time.Now(), start, time.Millisecond)
@@ -42,7 +42,7 @@ func TestTimeout(t *testing.T) {
 		start := time.Now()
 
 		// The timing here is a little sketchy.
-		Timeout(time.Millisecond, time.Millisecond*5, func() error {
+		Timeout(time.Now().Add(time.Millisecond*5), time.Millisecond, func() error {
 			count++
 			return errors.Errorf("asdfasdf")
 		})
@@ -53,7 +53,7 @@ func TestTimeout(t *testing.T) {
 
 	t.Run("returns as soon as error is nil", func(t *testing.T) {
 		start := time.Now()
-		Timeout(time.Minute, time.Hour, func() error {
+		Timeout(time.Now().Add(time.Hour), time.Minute, func() error {
 			return nil
 		})
 		assert.WithinDuration(t, time.Now(), start, time.Millisecond)

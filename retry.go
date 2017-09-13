@@ -9,7 +9,7 @@ import (
 )
 
 // Attempts calls f attempts times until it doesn't return an error.
-func Attempts(delay time.Duration, attempts int, f func() error) error {
+func Attempts(attempts int, delay time.Duration, f func() error) error {
 	var err error
 	for i := 0; i < attempts; i++ {
 		if err = f(); err == nil {
@@ -21,9 +21,9 @@ func Attempts(delay time.Duration, attempts int, f func() error) error {
 }
 
 // Timeout calls f until timeout is exceeded.
-func Timeout(delay time.Duration, timeout time.Duration, f func() error) error {
+func Timeout(timeout time.Time, delay time.Duration, f func() error) error {
 	var err error
-	for maxTime := time.Now().Add(timeout); time.Now().Before(maxTime); time.Sleep(delay) {
+	for maxTime := timeout; time.Now().Before(maxTime); time.Sleep(delay) {
 		if err = f(); err == nil {
 			return nil
 		}
