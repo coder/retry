@@ -42,7 +42,7 @@ func TestTimeout(t *testing.T) {
 		start := time.Now()
 
 		// The timing here is a little sketchy.
-		Timeout(time.Now().Add(time.Millisecond*5), time.Millisecond, func() error {
+		Timeout((time.Millisecond * 5), time.Millisecond, func() error {
 			count++
 			return errors.Errorf("asdfasdf")
 		})
@@ -53,7 +53,7 @@ func TestTimeout(t *testing.T) {
 
 	t.Run("returns as soon as error is nil", func(t *testing.T) {
 		start := time.Now()
-		Timeout(time.Now().Add(time.Hour), time.Minute, func() error {
+		Timeout((time.Hour), time.Minute, func() error {
 			return nil
 		})
 		assert.WithinDuration(t, time.Now(), start, time.Millisecond)

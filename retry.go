@@ -21,9 +21,9 @@ func Attempts(attempts int, delay time.Duration, f func() error) error {
 }
 
 // Timeout calls f until timeout is exceeded.
-func Timeout(timeout time.Time, delay time.Duration, f func() error) error {
+func Timeout(timeout time.Duration, delay time.Duration, f func() error) error {
 	var err error
-	for maxTime := timeout; time.Now().Before(maxTime); time.Sleep(delay) {
+	for maxTime := time.Now().Add(timeout); time.Now().Before(maxTime); time.Sleep(delay) {
 		if err = f(); err == nil {
 			return nil
 		}
