@@ -64,7 +64,7 @@ type testListener struct {
 
 func newTestListener(acceptFn func() (net.Conn, error)) net.Listener {
 	return &Listener{
-		LogTmpErr: func(err error, retry time.Duration) {},
+		LogTmpErr: func(err error) {},
 		Listener: &testListener{
 			acceptFn: acceptFn,
 		},
