@@ -98,7 +98,7 @@ func BackoffContext(ctx context.Context, ceil time.Duration, floor time.Duration
 }
 
 type Listener struct {
-	LogTmpErr func(err error, retryDelay time.Duration)
+	LogTmpErr func(err error)
 	net.Listener
 }
 
@@ -125,7 +125,7 @@ func (l *Listener) Accept() (net.Conn, error) {
 				if l.LogTmpErr == nil {
 					log.Printf("retry: temp error accepting next connection: %v; retrying in %v", err, retryDelay)
 				} else {
-					l.LogTmpErr(err, retryDelay)
+					l.LogTmpErr(err)
 				}
 				time.Sleep(retryDelay)
 				continue
