@@ -3,10 +3,9 @@ package retry
 import (
 	"context"
 	"io"
+	"net"
 	"testing"
 	"time"
-
-	"net"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -94,6 +93,14 @@ func TestBackoff(t *testing.T) {
 			return io.EOF
 		})
 		require.NoError(t, err)
+	})
+	t.Run("ceil < floor", func(t *testing.T) {
+		t.Parallel()
+		err := Backoff(0, 0, 5, func() error {
+			t.Fatal("should not be called?")
+			return nil
+		})
+		require.Equal(t, errCeilLessThanFloor, err)
 	})
 }
 

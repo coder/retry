@@ -6,6 +6,8 @@ import (
 	"log"
 	"net"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 // Attempts calls f attempts times until it doesn't return an error.
@@ -31,13 +33,18 @@ func Timeout(timeout time.Duration, delay time.Duration, f func() error) error {
 	return err
 }
 
+var errCeilLessThanFloor = errors.New("ceiling cannot be less than the floor")
+
 // Backoff implements an exponential backoff algorithm.
 // It calls f before timeout is exceeded using ceil as a maximum sleep
 // interval and floor as the start interval.
 // Since calls to f may take an undefined amount of time, Backoff cannot guarantee
 // it will return by timeout.
 // If timeout is 0, it will run until the function returns a nil error.
-func Backoff(timeout time.Duration, ceil time.Duration, floor time.Duration, f func() error) error {
+func  Backoff(timeout time.Duration, ceil time.Duration, floor time.Duration, f func() error) error {
+	if ceil < floor {
+		return errCeilLessThanFloor
+	}
 	var deadline time.Time
 	if timeout == 0 {
 		deadline = time.Now().AddDate(1337, 0, 0)
