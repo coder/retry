@@ -17,13 +17,14 @@ func TestAttempts(t *testing.T) {
 		count := 0
 		start := time.Now()
 
-		Attempts(5, time.Millisecond, func() error {
+		const sleep = time.Millisecond * 10
+		Attempts(5, sleep, func() error {
 			count++
 			return errors.Errorf("asdfasdf")
 		})
 
 		assert.Equal(t, 5, count)
-		assert.WithinDuration(t, start.Add(time.Millisecond*5), time.Now(), time.Millisecond*1)
+		assert.WithinDuration(t, start.Add(sleep*5), time.Now(), sleep)
 	})
 
 	t.Run("returns as soon as error is nil", func(t *testing.T) {
@@ -40,14 +41,16 @@ func TestTimeout(t *testing.T) {
 		count := 0
 		start := time.Now()
 
+		const sleep = time.Millisecond * 10
+
 		// The timing here is a little sketchy.
-		Timeout((time.Millisecond * 5), time.Millisecond, func() error {
+		Timeout((sleep * 5), sleep, func() error {
 			count++
 			return errors.Errorf("asdfasdf")
 		})
 
 		assert.Equal(t, 5, count)
-		assert.WithinDuration(t, start.Add(time.Millisecond*5), time.Now(), time.Millisecond*1)
+		assert.WithinDuration(t, start.Add(sleep*5), time.Now(), sleep)
 	})
 
 	t.Run("returns as soon as error is nil", func(t *testing.T) {
@@ -55,7 +58,7 @@ func TestTimeout(t *testing.T) {
 		Timeout((time.Hour), time.Minute, func() error {
 			return nil
 		})
-		assert.WithinDuration(t, time.Now(), start, time.Millisecond)
+		assert.WithinDuration(t, time.Now(), start, time.Millisecond*10)
 	})
 }
 
