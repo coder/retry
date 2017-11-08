@@ -41,14 +41,13 @@ var errCeilLessThanFloor = errors.New("ceiling cannot be less than the floor")
 // Since calls to f may take an undefined amount of time, Backoff cannot guarantee
 // it will return by timeout.
 // If timeout is 0, it will run until the function returns a nil error.
-func  Backoff(timeout time.Duration, ceil time.Duration, floor time.Duration, f func() error) error {
+func Backoff(timeout time.Duration, ceil time.Duration, floor time.Duration, f func() error) error {
 	if ceil < floor {
 		return errCeilLessThanFloor
 	}
+
 	var deadline time.Time
-	if timeout == 0 {
-		deadline = time.Now().AddDate(1337, 0, 0)
-	} else {
+	if timeout != 0 {
 		deadline = time.Now().Add(timeout)
 	}
 
@@ -60,9 +59,10 @@ func  Backoff(timeout time.Duration, ceil time.Duration, floor time.Duration, f 
 		if err == nil {
 			return nil
 		}
+
 		// since we're about to sleep for delay, we may as well
 		// factor it into our deadline calculation.
-		if time.Now().Add(delay).After(deadline) {
+		if timeout != 0 && time.Now().Add(delay).After(deadline) {
 			return err
 		}
 		time.Sleep(delay)
@@ -79,6 +79,10 @@ func  Backoff(timeout time.Duration, ceil time.Duration, floor time.Duration, f 
 // It calls f before the context is cancelled using ceil as a maximum sleep
 // interval and floor as the start interval.
 func BackoffContext(ctx context.Context, ceil time.Duration, floor time.Duration, f func() error) error {
+	if ceil < floor {
+		return errCeilLessThanFloor
+	}
+
 	delay := floor
 	var err error
 
@@ -88,13 +92,14 @@ func BackoffContext(ctx context.Context, ceil time.Duration, floor time.Duration
 			return nil
 		}
 
+		t := time.NewTimer(delay)
 		select {
 		case <-ctx.Done():
+			t.Stop()
 			return err
-		default:
+		case <-t.C:
 		}
 
-		time.Sleep(delay)
 		if delay < ceil {
 			delay = delay * 2
 			if delay > ceil {
