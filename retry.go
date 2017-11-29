@@ -23,7 +23,7 @@ func Attempts(attempts int, delay time.Duration, f func() error) error {
 }
 
 // Timeout calls f until timeout is exceeded.
-func Timeout(timeout time.Duration, delay time.Duration, f func() error) error {
+func Timeout(timeout, delay time.Duration, f func() error) error {
 	var err error
 	for maxTime := time.Now().Add(timeout); time.Now().Before(maxTime); time.Sleep(delay) {
 		if err = f(); err == nil {
@@ -41,7 +41,7 @@ var errCeilLessThanFloor = errors.New("ceiling cannot be less than the floor")
 // Since calls to f may take an undefined amount of time, Backoff cannot guarantee
 // it will return by timeout.
 // If timeout is 0, it will run until the function returns a nil error.
-func Backoff(timeout time.Duration, ceil time.Duration, floor time.Duration, f func() error) error {
+func Backoff(timeout, ceil, floor time.Duration, f func() error) error {
 	if ceil < floor {
 		return errCeilLessThanFloor
 	}
@@ -78,7 +78,7 @@ func Backoff(timeout time.Duration, ceil time.Duration, floor time.Duration, f f
 // BackoffContext implements an exponential backoff algorithm.
 // It calls f before the context is cancelled using ceil as a maximum sleep
 // interval and floor as the start interval.
-func BackoffContext(ctx context.Context, ceil time.Duration, floor time.Duration, f func() error) error {
+func BackoffContext(ctx context.Context, ceil, floor time.Duration, f func() error) error {
 	if ceil < floor {
 		return errCeilLessThanFloor
 	}
