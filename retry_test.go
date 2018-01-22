@@ -109,13 +109,7 @@ func TestBackoff(t *testing.T) {
 
 func TestBackoffWhile(t *testing.T) {
 	t.Parallel()
-
-	notNil := func(err error) bool {
-		if err != nil {
-			return true
-		}
-		return false
-	}
+	notNil := func(err error) bool { return err != nil }
 
 	t.Run("return when cond is satisfied", func(t *testing.T) {
 		errImDone := errors.New("done")
@@ -197,12 +191,7 @@ func TestBackoffContext(t *testing.T) {
 }
 
 func TestBackoffContextWhile(t *testing.T) {
-	notNil := func(err error) bool {
-		if err != nil {
-			return true
-		}
-		return false
-	}
+	notNil := func(err error) bool { return err != nil }
 	t.Run("return when cond is satisfied", func(t *testing.T) {
 		ctx, _ := context.WithTimeout(context.Background(), time.Minute)
 		var count int
