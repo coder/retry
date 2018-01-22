@@ -122,12 +122,11 @@ func TestBackoffWhile(t *testing.T) {
 			return io.EOF
 		}
 
-		cond := func(err error) bool { return err == errImDone }
+		notDone := func(err error) bool { return err != errImDone }
 
-		err := BackoffWhile(time.Minute, time.Second, time.Millisecond, f, cond)
+		err := BackoffWhile(time.Minute, time.Second, time.Millisecond, f, notDone)
 		assert.Equal(t, 10, count)
 		assert.EqualError(t, err, errImDone.Error())
-		assert.False(t, cond(err))
 	})
 
 	t.Run("don't exceed deadline dramatically", func(t *testing.T) {
