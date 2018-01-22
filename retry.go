@@ -35,6 +35,10 @@ func Timeout(timeout, delay time.Duration, f func() error) error {
 
 var errCeilLessThanFloor = errors.New("ceiling cannot be less than the floor")
 
+// notNil is a condition function that if passed to a Backoff,
+// will continue retrying until the error is nil.
+func notNil(err error) bool { return err != nil }
+
 // Backoff implements an exponential backoff algorithm.
 // It calls f before timeout is exceeded using ceil as a maximum sleep
 // interval and floor as the start interval.
@@ -42,6 +46,18 @@ var errCeilLessThanFloor = errors.New("ceiling cannot be less than the floor")
 // it will return by timeout.
 // If timeout is 0, it will run until the function returns a nil error.
 func Backoff(timeout, ceil, floor time.Duration, f func() error) error {
+	return BackoffWhile(timeout, ceil, floor, f, notNil)
+}
+
+// BackoffWhile implements an exponential backoff algorithm.
+//
+// It calls f before timeout is exceeded, using ceil as a maximum sleep interval,
+// and floor as the starting interval.
+//
+// It will continue calling f until either the timeout is exceeded or cond(f()) == false.
+//
+// If timeout is 0, f will be called until cond(f()) == false.
+func BackoffWhile(timeout, ceil, floor time.Duration, f func() error, cond func(error) bool) error {
 	if ceil < floor {
 		return errCeilLessThanFloor
 	}
@@ -56,8 +72,8 @@ func Backoff(timeout, ceil, floor time.Duration, f func() error) error {
 
 	for {
 		err = f()
-		if err == nil {
-			return nil
+		if !cond(err) {
+			return err
 		}
 
 		// since we're about to sleep for delay, we may as well
@@ -79,6 +95,10 @@ func Backoff(timeout, ceil, floor time.Duration, f func() error) error {
 // It calls f before the context is cancelled using ceil as a maximum sleep
 // interval and floor as the start interval.
 func BackoffContext(ctx context.Context, ceil, floor time.Duration, f func() error) error {
+	return BackoffContextWhile(ctx, ceil, floor, f, notNil)
+}
+
+func BackoffContextWhile(ctx context.Context, ceil, floor time.Duration, f func() error, cond func(error) bool) error {
 	if ceil < floor {
 		return errCeilLessThanFloor
 	}
@@ -88,8 +108,8 @@ func BackoffContext(ctx context.Context, ceil, floor time.Duration, f func() err
 
 	for {
 		err = f()
-		if err == nil {
-			return nil
+		if !cond(err) {
+			return err
 		}
 
 		t := time.NewTimer(delay)
