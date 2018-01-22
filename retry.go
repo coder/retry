@@ -43,10 +43,7 @@ var errCeilLessThanFloor = errors.New("ceiling cannot be less than the floor")
 // If timeout is 0, it will run until the function returns a nil error.
 func Backoff(timeout, ceil, floor time.Duration, f func() error) error {
 	return BackoffWhile(timeout, ceil, floor, f, func(err error) bool {
-		if err != nil {
-			return true
-		}
-		return false
+		return err != nil
 	})
 }
 
@@ -97,10 +94,7 @@ func BackoffWhile(timeout, ceil, floor time.Duration, f func() error, cond func(
 // interval and floor as the start interval.
 func BackoffContext(ctx context.Context, ceil, floor time.Duration, f func() error) error {
 	return BackoffContextWhile(ctx, ceil, floor, f, func(err error) bool {
-		if err != nil {
-			return true
-		}
-		return false
+		return err != nil
 	})
 }
 
