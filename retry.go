@@ -96,7 +96,7 @@ func BackoffWhile(timeout, ceil, floor time.Duration, f func() error, cond func(
 // It calls f before the context is cancelled using ceil as a maximum sleep
 // interval and floor as the start interval.
 func BackoffContext(ctx context.Context, ceil, floor time.Duration, f func() error) error {
-	return backoffContextWhile(ctx, ceil, floor, f, func(err error) bool {
+	return BackoffContextWhile(ctx, ceil, floor, f, func(err error) bool {
 		if err != nil {
 			return true
 		}
@@ -104,7 +104,7 @@ func BackoffContext(ctx context.Context, ceil, floor time.Duration, f func() err
 	})
 }
 
-func backoffContextWhile(ctx context.Context, ceil, floor time.Duration, f func() error, cond func(error) bool) error {
+func BackoffContextWhile(ctx context.Context, ceil, floor time.Duration, f func() error, cond func(error) bool) error {
 	if ceil < floor {
 		return errCeilLessThanFloor
 	}

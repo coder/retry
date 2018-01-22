@@ -196,6 +196,38 @@ func TestBackoffContext(t *testing.T) {
 	})
 }
 
+func TestBackoffContextWhile(t *testing.T) {
+	notNil := func(err error) bool {
+		if err != nil {
+			return true
+		}
+		return false
+	}
+	t.Run("return when cond is satisfied", func(t *testing.T) {
+		ctx, _ := context.WithTimeout(context.Background(), time.Minute)
+		var count int
+		err := BackoffContextWhile(ctx, time.Second, time.Millisecond, func() error {
+			count++
+			if count == 10 {
+				return nil
+			}
+			return io.EOF
+		}, notNil)
+		assert.Equal(t, 10, count)
+		assert.NoError(t, err)
+	})
+
+	t.Run("respect context cancellation", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		time.AfterFunc(time.Millisecond*100, cancel)
+		start := time.Now()
+		BackoffContextWhile(ctx, time.Millisecond*5, time.Millisecond, func() error {
+			return io.EOF
+		}, notNil)
+		assert.WithinDuration(t, start.Add(time.Millisecond*100), time.Now(), time.Millisecond*10)
+	})
+}
+
 type testListener struct {
 	acceptFn func() (net.Conn, error)
 }
