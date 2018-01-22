@@ -42,43 +42,52 @@ var errCeilLessThanFloor = errors.New("ceiling cannot be less than the floor")
 // it will return by timeout.
 // If timeout is 0, it will run until the function returns a nil error.
 func Backoff(timeout, ceil, floor time.Duration, f func() error) error {
-	if ceil < floor {
-		return errCeilLessThanFloor
-	}
-
-	var deadline time.Time
+	var ctx context.Context
 	if timeout != 0 {
-		deadline = time.Now().Add(timeout)
+		var cancel func()
+		ctx, cancel = context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+	} else {
+		ctx = context.Background()
 	}
 
-	delay := floor
-	var err error
+	return BackoffContext(ctx, ceil, floor, f)
+}
 
-	for {
-		err = f()
-		if err == nil {
-			return nil
-		}
-
-		// since we're about to sleep for delay, we may as well
-		// factor it into our deadline calculation.
-		if timeout != 0 && time.Now().Add(delay).After(deadline) {
-			return err
-		}
-		time.Sleep(delay)
-		if delay < ceil {
-			delay = delay * 2
-			if delay > ceil {
-				delay = ceil
-			}
-		}
+// BackoffWhile implements an exponential backoff algorithm.
+//
+// It calls f before timeout is exceeded, using ceil as a maximum sleep interval,
+// and floor as the starting interval.
+//
+// It will continue calling f until either the timeout is exceeded or cond(f()) == false.
+//
+// If timeout is 0, f will be called until cond(f()) == false.
+func BackoffWhile(timeout, ceil, floor time.Duration, f func() error, cond func(error) bool) error {
+	var ctx context.Context
+	if timeout != 0 {
+		var cancel func()
+		ctx, cancel = context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+	} else {
+		ctx = context.Background()
 	}
+
+	return backoffContextWhile(ctx, ceil, floor, f, cond)
 }
 
 // BackoffContext implements an exponential backoff algorithm.
 // It calls f before the context is cancelled using ceil as a maximum sleep
 // interval and floor as the start interval.
 func BackoffContext(ctx context.Context, ceil, floor time.Duration, f func() error) error {
+	return backoffContextWhile(ctx, ceil, floor, f, func(err error) bool {
+		if err != nil {
+			return true
+		}
+		return false
+	})
+}
+
+func backoffContextWhile(ctx context.Context, ceil, floor time.Duration, f func() error, cond func(error) bool) error {
 	if ceil < floor {
 		return errCeilLessThanFloor
 	}
@@ -88,8 +97,8 @@ func BackoffContext(ctx context.Context, ceil, floor time.Duration, f func() err
 
 	for {
 		err = f()
-		if err == nil {
-			return nil
+		if !cond(err) {
+			return err
 		}
 
 		t := time.NewTimer(delay)

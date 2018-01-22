@@ -107,6 +107,69 @@ func TestBackoff(t *testing.T) {
 	})
 }
 
+func TestBackoffWhile(t *testing.T) {
+	t.Parallel()
+
+	notNil := func(err error) bool {
+		if err != nil {
+			return true
+		}
+		return false
+	}
+
+	t.Run("return when cond is satisfied", func(t *testing.T) {
+		errImDone := errors.New("done")
+		var count int
+		f := func() error {
+			count++
+			if count == 10 {
+				return errImDone
+			}
+			return io.EOF
+		}
+
+		cond := func(err error) bool {
+			if err == errImDone {
+				return false
+			}
+			return true
+		}
+
+		err := BackoffWhile(time.Minute, time.Second, time.Millisecond, f, cond)
+		assert.Equal(t, 10, count)
+		assert.EqualError(t, err, errImDone.Error())
+		assert.False(t, cond(err))
+	})
+
+	t.Run("don't exceed deadline dramatically", func(t *testing.T) {
+		start := time.Now()
+		BackoffWhile(time.Second, time.Millisecond*5, time.Millisecond, func() error {
+			time.Sleep(time.Millisecond * 5)
+			return io.EOF
+		}, notNil)
+		assert.WithinDuration(t, start.Add(time.Second), time.Now(), time.Millisecond*10)
+	})
+
+	t.Run("Run until nil error", func(t *testing.T) {
+		start := time.Now()
+		err := BackoffWhile(0, time.Second*5, time.Millisecond*200, func() error {
+			if time.Now().Sub(start) > time.Second {
+				return nil
+			}
+			return io.EOF
+		}, notNil)
+		require.NoError(t, err)
+	})
+	t.Run("ceil < floor", func(t *testing.T) {
+		t.Parallel()
+		err := BackoffWhile(0, 0, 5, func() error {
+			t.Fatal("should not be called?")
+			return nil
+		}, notNil)
+		require.Equal(t, errCeilLessThanFloor, err)
+	})
+}
+
 func TestBackoffContext(t *testing.T) {
 	t.Run("return when nil", func(t *testing.T) {
 		ctx, _ := context.WithTimeout(context.Background(), time.Minute)
