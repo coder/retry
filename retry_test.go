@@ -109,7 +109,6 @@ func TestBackoff(t *testing.T) {
 
 func TestBackoffWhile(t *testing.T) {
 	t.Parallel()
-	notNil := func(err error) bool { return err != nil }
 
 	t.Run("return when cond is satisfied", func(t *testing.T) {
 		errImDone := errors.New("done")
@@ -134,7 +133,9 @@ func TestBackoffWhile(t *testing.T) {
 		BackoffWhile(time.Second, time.Millisecond*5, time.Millisecond, func() error {
 			time.Sleep(time.Millisecond * 5)
 			return io.EOF
-		}, notNil)
+		}, NotNil,
+		)
+
 		assert.WithinDuration(t, start.Add(time.Second), time.Now(), time.Millisecond*10)
 	})
 
@@ -145,7 +146,9 @@ func TestBackoffWhile(t *testing.T) {
 				return nil
 			}
 			return io.EOF
-		}, notNil)
+		}, NotNil,
+		)
+
 		require.NoError(t, err)
 	})
 	t.Run("ceil < floor", func(t *testing.T) {
@@ -153,7 +156,9 @@ func TestBackoffWhile(t *testing.T) {
 		err := BackoffWhile(0, 0, 5, func() error {
 			t.Fatal("should not be called?")
 			return nil
-		}, notNil)
+		}, NotNil,
+		)
+
 		require.Equal(t, errCeilLessThanFloor, err)
 	})
 }
@@ -180,12 +185,12 @@ func TestBackoffContext(t *testing.T) {
 		BackoffContext(ctx, time.Millisecond*5, time.Millisecond, func() error {
 			return io.EOF
 		})
+
 		assert.WithinDuration(t, start.Add(time.Millisecond*100), time.Now(), time.Millisecond*10)
 	})
 }
 
 func TestBackoffContextWhile(t *testing.T) {
-	notNil := func(err error) bool { return err != nil }
 	t.Run("return when cond is satisfied", func(t *testing.T) {
 		ctx, _ := context.WithTimeout(context.Background(), time.Minute)
 		var count int
@@ -195,7 +200,9 @@ func TestBackoffContextWhile(t *testing.T) {
 				return nil
 			}
 			return io.EOF
-		}, notNil)
+		}, NotNil,
+		)
+
 		assert.Equal(t, 10, count)
 		assert.NoError(t, err)
 	})
@@ -206,7 +213,9 @@ func TestBackoffContextWhile(t *testing.T) {
 		start := time.Now()
 		BackoffContextWhile(ctx, time.Millisecond*5, time.Millisecond, func() error {
 			return io.EOF
-		}, notNil)
+		}, NotNil,
+		)
+
 		assert.WithinDuration(t, start.Add(time.Millisecond*100), time.Now(), time.Millisecond*10)
 	})
 }
