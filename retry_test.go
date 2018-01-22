@@ -122,12 +122,7 @@ func TestBackoffWhile(t *testing.T) {
 			return io.EOF
 		}
 
-		cond := func(err error) bool {
-			if err == errImDone {
-				return false
-			}
-			return true
-		}
+		cond := func(err error) bool { return err == errImDone }
 
 		err := BackoffWhile(time.Minute, time.Second, time.Millisecond, f, cond)
 		assert.Equal(t, 10, count)
