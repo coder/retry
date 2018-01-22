@@ -133,7 +133,7 @@ func TestBackoffWhile(t *testing.T) {
 		BackoffWhile(time.Second, time.Millisecond*5, time.Millisecond, func() error {
 			time.Sleep(time.Millisecond * 5)
 			return io.EOF
-		}, NotNil,
+		}, notNil,
 		)
 
 		assert.WithinDuration(t, start.Add(time.Second), time.Now(), time.Millisecond*10)
@@ -146,7 +146,7 @@ func TestBackoffWhile(t *testing.T) {
 				return nil
 			}
 			return io.EOF
-		}, NotNil,
+		}, notNil,
 		)
 
 		require.NoError(t, err)
@@ -156,7 +156,7 @@ func TestBackoffWhile(t *testing.T) {
 		err := BackoffWhile(0, 0, 5, func() error {
 			t.Fatal("should not be called?")
 			return nil
-		}, NotNil,
+		}, notNil,
 		)
 
 		require.Equal(t, errCeilLessThanFloor, err)
@@ -200,7 +200,7 @@ func TestBackoffContextWhile(t *testing.T) {
 				return nil
 			}
 			return io.EOF
-		}, NotNil,
+		}, notNil,
 		)
 
 		assert.Equal(t, 10, count)
@@ -213,7 +213,7 @@ func TestBackoffContextWhile(t *testing.T) {
 		start := time.Now()
 		BackoffContextWhile(ctx, time.Millisecond*5, time.Millisecond, func() error {
 			return io.EOF
-		}, NotNil,
+		}, notNil,
 		)
 
 		assert.WithinDuration(t, start.Add(time.Millisecond*100), time.Now(), time.Millisecond*10)

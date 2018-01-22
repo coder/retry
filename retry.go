@@ -35,9 +35,9 @@ func Timeout(timeout, delay time.Duration, f func() error) error {
 
 var errCeilLessThanFloor = errors.New("ceiling cannot be less than the floor")
 
-// NotNil is a condition function that if passed to a Backoff,
+// notNil is a condition function that if passed to a Backoff,
 // will continue retrying until the error is nil.
-func NotNil(err error) bool { return err != nil }
+func notNil(err error) bool { return err != nil }
 
 // Backoff implements an exponential backoff algorithm.
 // It calls f before timeout is exceeded using ceil as a maximum sleep
@@ -46,7 +46,7 @@ func NotNil(err error) bool { return err != nil }
 // it will return by timeout.
 // If timeout is 0, it will run until the function returns a nil error.
 func Backoff(timeout, ceil, floor time.Duration, f func() error) error {
-	return BackoffWhile(timeout, ceil, floor, f, NotNil)
+	return BackoffWhile(timeout, ceil, floor, f, notNil)
 }
 
 // BackoffWhile implements an exponential backoff algorithm.
@@ -95,7 +95,7 @@ func BackoffWhile(timeout, ceil, floor time.Duration, f func() error, cond func(
 // It calls f before the context is cancelled using ceil as a maximum sleep
 // interval and floor as the start interval.
 func BackoffContext(ctx context.Context, ceil, floor time.Duration, f func() error) error {
-	return BackoffContextWhile(ctx, ceil, floor, f, NotNil)
+	return BackoffContextWhile(ctx, ceil, floor, f, notNil)
 }
 
 func BackoffContextWhile(ctx context.Context, ceil, floor time.Duration, f func() error, cond func(error) bool) error {
