@@ -90,7 +90,7 @@ func TestBackoff(t *testing.T) {
 	t.Run("Run until nil error", func(t *testing.T) {
 		start := time.Now()
 		err := Backoff(0, time.Second*5, time.Millisecond*200, func() error {
-			if time.Now().Sub(start) > time.Second {
+			if time.Since(start) > time.Second {
 				return nil
 			}
 			return io.EOF
@@ -142,7 +142,7 @@ func TestBackoffWhile(t *testing.T) {
 	t.Run("Run until nil error", func(t *testing.T) {
 		start := time.Now()
 		err := BackoffWhile(0, time.Second*5, time.Millisecond*200, func() error {
-			if time.Now().Sub(start) > time.Second {
+			if time.Since(start) > time.Second {
 				return nil
 			}
 			return io.EOF
