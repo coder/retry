@@ -67,42 +67,63 @@ func TestBackoff(t *testing.T) {
 
 	t.Run("return when nil", func(t *testing.T) {
 		var count int
-		err := Backoff(time.Minute, time.Second, time.Millisecond, func() error {
-			count++
-			if count == 10 {
-				return nil
-			}
-			return io.EOF
-		})
+		err := Backoff(
+			time.Minute,
+			time.Second,
+			time.Millisecond,
+			func() error {
+				count++
+				if count == 10 {
+					return nil
+				}
+				return io.EOF
+			},
+		)
 		assert.Equal(t, 10, count)
 		assert.NoError(t, err)
 	})
 
 	t.Run("don't exceed deadline dramatically", func(t *testing.T) {
 		start := time.Now()
-		Backoff(time.Second, time.Millisecond*5, time.Millisecond, func() error {
-			time.Sleep(time.Millisecond * 5)
-			return io.EOF
-		})
+		Backoff(
+			time.Second,
+			time.Millisecond*5,
+			time.Millisecond,
+			func() error {
+				time.Sleep(time.Millisecond * 5)
+				return io.EOF
+			},
+		)
 		assert.WithinDuration(t, start.Add(time.Second), time.Now(), time.Millisecond*10)
 	})
 
 	t.Run("Run until nil error", func(t *testing.T) {
 		start := time.Now()
-		err := Backoff(0, time.Second*5, time.Millisecond*200, func() error {
-			if time.Since(start) > time.Second {
-				return nil
-			}
-			return io.EOF
-		})
+		err := Backoff(
+			0,
+			time.Second*5,
+			time.Millisecond*200,
+			func() error {
+				if time.Since(start) > time.Second {
+					return nil
+				}
+				return io.EOF
+			},
+		)
 		require.NoError(t, err)
 	})
+
 	t.Run("ceil < floor", func(t *testing.T) {
 		t.Parallel()
-		err := Backoff(0, 0, 5, func() error {
-			t.Fatal("should not be called?")
-			return nil
-		})
+		err := Backoff(
+			0,
+			0,
+			5,
+			func() error {
+				t.Fatal("should not be called?")
+				return nil
+			},
+		)
 		require.Equal(t, errCeilLessThanFloor, err)
 	})
 }
@@ -130,10 +151,15 @@ func TestBackoffWhile(t *testing.T) {
 
 	t.Run("don't exceed deadline dramatically", func(t *testing.T) {
 		start := time.Now()
-		BackoffWhile(time.Second, time.Millisecond*5, time.Millisecond, func() error {
-			time.Sleep(time.Millisecond * 5)
-			return io.EOF
-		}, notNil,
+		BackoffWhile(
+			time.Second,
+			time.Millisecond*5,
+			time.Millisecond,
+			func() error {
+				time.Sleep(time.Millisecond * 5)
+				return io.EOF
+			},
+			notNil,
 		)
 
 		assert.WithinDuration(t, start.Add(time.Second), time.Now(), time.Millisecond*10)
@@ -141,22 +167,33 @@ func TestBackoffWhile(t *testing.T) {
 
 	t.Run("Run until nil error", func(t *testing.T) {
 		start := time.Now()
-		err := BackoffWhile(0, time.Second*5, time.Millisecond*200, func() error {
-			if time.Since(start) > time.Second {
-				return nil
-			}
-			return io.EOF
-		}, notNil,
+		err := BackoffWhile(
+			0,
+			time.Second*5,
+			time.Millisecond*200,
+			func() error {
+				if time.Since(start) > time.Second {
+					return nil
+				}
+				return io.EOF
+			},
+			notNil,
 		)
 
 		require.NoError(t, err)
 	})
+
 	t.Run("ceil < floor", func(t *testing.T) {
 		t.Parallel()
-		err := BackoffWhile(0, 0, 5, func() error {
-			t.Fatal("should not be called?")
-			return nil
-		}, notNil,
+		err := BackoffWhile(
+			0,
+			0,
+			5,
+			func() error {
+				t.Fatal("should not be called?")
+				return nil
+			},
+			notNil,
 		)
 
 		require.Equal(t, errCeilLessThanFloor, err)
@@ -167,13 +204,18 @@ func TestBackoffContext(t *testing.T) {
 	t.Run("return when nil", func(t *testing.T) {
 		ctx, _ := context.WithTimeout(context.Background(), time.Minute)
 		var count int
-		err := BackoffContext(ctx, time.Second, time.Millisecond, func() error {
-			count++
-			if count == 10 {
-				return nil
-			}
-			return io.EOF
-		})
+		err := BackoffContext(
+			ctx,
+			time.Second,
+			time.Millisecond,
+			func() error {
+				count++
+				if count == 10 {
+					return nil
+				}
+				return io.EOF
+			},
+		)
 		assert.Equal(t, 10, count)
 		assert.NoError(t, err)
 	})
@@ -182,9 +224,14 @@ func TestBackoffContext(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		time.AfterFunc(time.Millisecond*100, cancel)
 		start := time.Now()
-		BackoffContext(ctx, time.Millisecond*5, time.Millisecond, func() error {
-			return io.EOF
-		})
+		BackoffContext(
+			ctx,
+			time.Millisecond*5,
+			time.Millisecond,
+			func() error {
+				return io.EOF
+			},
+		)
 
 		assert.WithinDuration(t, start.Add(time.Millisecond*100), time.Now(), time.Millisecond*10)
 	})
@@ -194,13 +241,18 @@ func TestBackoffContextWhile(t *testing.T) {
 	t.Run("return when cond is satisfied", func(t *testing.T) {
 		ctx, _ := context.WithTimeout(context.Background(), time.Minute)
 		var count int
-		err := BackoffContextWhile(ctx, time.Second, time.Millisecond, func() error {
-			count++
-			if count == 10 {
-				return nil
-			}
-			return io.EOF
-		}, notNil,
+		err := BackoffContextWhile(
+			ctx,
+			time.Second,
+			time.Millisecond,
+			func() error {
+				count++
+				if count == 10 {
+					return nil
+				}
+				return io.EOF
+			},
+			notNil,
 		)
 
 		assert.Equal(t, 10, count)
@@ -211,9 +263,14 @@ func TestBackoffContextWhile(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		time.AfterFunc(time.Millisecond*100, cancel)
 		start := time.Now()
-		BackoffContextWhile(ctx, time.Millisecond*5, time.Millisecond, func() error {
-			return io.EOF
-		}, notNil,
+		BackoffContextWhile(
+			ctx,
+			time.Millisecond*5,
+			time.Millisecond,
+			func() error {
+				return io.EOF
+			},
+			notNil,
 		)
 
 		assert.WithinDuration(t, start.Add(time.Millisecond*100), time.Now(), time.Millisecond*10)
