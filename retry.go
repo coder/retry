@@ -12,7 +12,6 @@ import (
 // Retry holds state about a retryable operation.
 // Callers should create this via New.
 type Retry struct {
-	fn       func() error
 	sleepDur func() time.Duration
 
 	// preConditions are ran before each call to fn.
@@ -20,15 +19,12 @@ type Retry struct {
 
 	// postConditions are ran after each call to fn.
 	postConditions []func(err error) bool
-
-	iteration int
 }
 
 // New creates a new retry.
 // The default retry will run forever, sleeping sleep.
-func New(fn func() error, sleep time.Duration) *Retry {
+func New(sleep time.Duration) *Retry {
 	r := &Retry{
-		fn: fn,
 		sleepDur: func() time.Duration {
 			return sleep
 		},
@@ -89,8 +85,11 @@ func (r *Retry) postCheck(err error) bool {
 // Attempts sets the maximum amount of retry attempts
 // before the current error is returned.
 func (r *Retry) Attempts(n int) *Retry {
+	var iterations int
 	r.appendPreCondition(func() bool {
-		return r.iteration < n
+		ok := iterations < n
+		iterations++
+		return ok
 	})
 	return r
 }
@@ -175,10 +174,10 @@ func (r *Retry) Jitter(rat float64) *Retry {
 
 // Run runs the retry.
 // The retry must not be ran twice.
-func (r *Retry) Run() error {
+func (r *Retry) Run(fn func() error) error {
 	err := errors.Errorf("didn't run a single iteration?")
-	for ; r.preCheck(); r.iteration++ {
-		err = r.fn()
+	for r.preCheck() {
+		err = fn()
 		if !r.postCheck(err) {
 			return err
 		}

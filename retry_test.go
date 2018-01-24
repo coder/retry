@@ -12,16 +12,17 @@ import (
 
 func TestRetry(t *testing.T) {
 	t.Run("Attempts", func(t *testing.T) {
+		t.Parallel()
 		t.Run("Respects count and sleeps between attempts", func(t *testing.T) {
 			count := 0
 			start := time.Now()
 
 			const sleep = time.Millisecond * 10
 
-			New(func() error {
+			New(sleep).Attempts(5).Run(func() error {
 				count++
 				return errors.Errorf("asdfasdf")
-			}, sleep).Attempts(5).Run()
+			})
 
 			assert.Equal(t, 5, count)
 			assert.WithinDuration(t, start.Add(sleep*5), time.Now(), sleep)
@@ -31,28 +32,26 @@ func TestRetry(t *testing.T) {
 			start := time.Now()
 
 			var count int
-			New(func() error {
+			New(time.Minute).Attempts(100).Run(func() error {
 				count++
 				return nil
-			}, time.Minute).Attempts(100).Run()
+			})
 
 			assert.Equal(t, 1, count)
 			assert.WithinDuration(t, time.Now(), start, time.Millisecond)
 		})
 	})
 	t.Run("Backoff", func(t *testing.T) {
+		t.Parallel()
 		t.Run("return when nil", func(t *testing.T) {
 			var count int
-			err := New(
-				func() error {
-					count++
-					if count == 10 {
-						return nil
-					}
-					return io.EOF
-				},
-				time.Millisecond,
-			).Timeout(time.Minute).Backoff(time.Second).Run()
+			err := New(time.Millisecond).Timeout(time.Minute).Backoff(time.Second).Run(func() error {
+				count++
+				if count == 10 {
+					return nil
+				}
+				return io.EOF
+			})
 
 			assert.Equal(t, 10, count)
 			assert.NoError(t, err)
@@ -60,16 +59,17 @@ func TestRetry(t *testing.T) {
 	})
 
 	t.Run("Timeout", func(t *testing.T) {
+		t.Parallel()
 		t.Run("Respects timeout and sleeps between attempts", func(t *testing.T) {
 			count := 0
 			start := time.Now()
 
 			const sleep = time.Millisecond * 10
 
-			New(func() error {
+			New(sleep).Timeout(sleep * 5).Run(func() error {
 				count++
 				return errors.Errorf("asdfasdf")
-			}, sleep).Timeout(sleep * 5).Run()
+			})
 
 			assert.Equal(t, 5, count)
 			assert.WithinDuration(t, start.Add(sleep*5), time.Now(), sleep)
@@ -78,18 +78,19 @@ func TestRetry(t *testing.T) {
 		t.Run("returns as soon as error is nil", func(t *testing.T) {
 			start := time.Now()
 
-			New(func() error {
+			New(time.Minute).Timeout(time.Hour).Run(func() error {
 				return nil
-			}, time.Minute).Timeout(time.Hour).Run()
+			})
 
 			assert.WithinDuration(t, time.Now(), start, time.Millisecond*10)
 		})
 	})
 
 	t.Run("Cond", func(t *testing.T) {
+		t.Parallel()
 		count := 0
 
-		err := New(func() error {
+		err := New(time.Millisecond).Condition(OnErrors(io.ErrUnexpectedEOF, io.EOF)).Run(func() error {
 			if count == 5 {
 				return io.ErrNoProgress
 			}
@@ -98,7 +99,7 @@ func TestRetry(t *testing.T) {
 				return errors.WithStack(io.ErrUnexpectedEOF)
 			}
 			return io.EOF
-		}, time.Millisecond).Condition(OnErrors(io.ErrUnexpectedEOF, io.EOF)).Run()
+		})
 
 		assert.Equal(t, count, 5)
 		assert.Equal(t, io.ErrNoProgress, err)
@@ -106,40 +107,42 @@ func TestRetry(t *testing.T) {
 	})
 
 	t.Run("Context", func(t *testing.T) {
+		t.Parallel()
 
 		ctx, cancel := context.WithCancel(context.Background())
 
 		var count int
 
-		err := New(func() error {
+		err := New(time.Millisecond).Context(ctx).Run(func() error {
 			if count == 3 {
 				cancel()
 			} else {
 				count++
 			}
 			return io.EOF
-		}, time.Millisecond).Context(ctx).Run()
+		})
 
 		assert.Equal(t, 3, count)
 		assert.Equal(t, io.EOF, err)
 	})
 
 	t.Run("Jitter", func(t *testing.T) {
+		t.Parallel()
 		var count int
 
 		var durs []time.Duration
 		last := time.Now()
-		New(func() error {
+		New(time.Millisecond).Attempts(500).Jitter(0.9999).Run(func() error {
 			durs = append(durs, time.Since(last))
 			last = time.Now()
 			count++
 			return io.EOF
-		}, time.Millisecond*10).Attempts(500).Jitter(0.9999).Run()
+		})
 
 		avg := avgDurations(durs)
 		t.Logf("avg dur: %v", avg)
 
-		if avg < time.Second*4 || avg > time.Second*6 {
+		if avg < time.Microsecond*900 || avg > time.Microsecond*1200 {
 			t.Errorf("bad avg %v", avg)
 		}
 	})
