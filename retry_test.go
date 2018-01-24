@@ -95,7 +95,7 @@ func TestRetry(t *testing.T) {
 			}
 			count++
 			if count%2 == 0 {
-				return io.ErrUnexpectedEOF
+				return errors.WithStack(io.ErrUnexpectedEOF)
 			}
 			return io.EOF
 		}, time.Millisecond).Condition(OnErrors(io.ErrUnexpectedEOF, io.EOF)).Run()

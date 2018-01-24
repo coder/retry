@@ -46,7 +46,7 @@ func (r *Retry) appendPostCondition(fn func(err error) bool) {
 func OnErrors(errs ...error) func(err error) bool {
 	return func(err error) bool {
 		for _, checkErr := range errs {
-			if err == checkErr {
+			if errors.Cause(err) == checkErr {
 				return true
 			}
 		}
