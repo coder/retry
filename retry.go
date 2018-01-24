@@ -26,12 +26,18 @@ type Retry struct {
 // New creates a new retry.
 // The default retry will run forever, sleeping sleep.
 func New(fn func() error, sleep time.Duration) *Retry {
-	return &Retry{
+	r := &Retry{
 		fn: fn,
 		sleepDur: func() time.Duration {
 			return sleep
 		},
 	}
+	
+	r.appendPostCondition(func(err error) bool {
+		return err != nil
+	})
+
+	return r
 }
 
 func (r *Retry) appendPreCondition(fn func() bool) {
@@ -71,9 +77,6 @@ func (r *Retry) preCheck() bool {
 }
 
 func (r *Retry) postCheck(err error) bool {
-	if err == nil {
-		return false
-	}
 	for _, fn := range r.postConditions {
 		if !fn(err) {
 			return false
@@ -119,7 +122,7 @@ func (r *Retry) Backoff(ceil time.Duration) *Retry {
 
 	r.sleepDur = func() time.Duration {
 		if delay < ceil {
-			delay = delay * 2
+			delay = delay * growth
 			if delay > ceil {
 				delay = ceil
 			}
