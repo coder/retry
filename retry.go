@@ -3,6 +3,7 @@ package retry
 
 import (
 	"context"
+	"math/rand"
 	"time"
 
 	"github.com/pkg/errors"
@@ -32,7 +33,7 @@ func New(fn func() error, sleep time.Duration) *Retry {
 			return sleep
 		},
 	}
-	
+
 	r.appendPostCondition(func(err error) bool {
 		return err != nil
 	})
@@ -140,6 +141,32 @@ func (r *Retry) Timeout(to time.Duration) *Retry {
 	r.appendPreCondition(func() bool {
 		return time.Now().Before(deadline)
 	})
+
+	return r
+}
+
+// Jitter adds some random jitter to the retry's sleep.
+//
+// It will multiply the sleep by a random between min and max.
+func (r *Retry) Jitter(min, max float64) *Retry {
+	if max <= min {
+		panic("retry: min must be less than max")
+	}
+
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	underlyingSleep := r.sleepDur
+	r.sleepDur = func() time.Duration {
+		dur := underlyingSleep()
+
+		var (
+			minDuration = float64(dur) * min
+			maxDuration = float64(dur) * max
+		)
+
+		dur = time.Duration(minDuration) + time.Duration(rnd.Int63n(int64(maxDuration)-int64(minDuration)))
+		return dur
+	}
 
 	return r
 }

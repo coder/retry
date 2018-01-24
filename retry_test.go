@@ -123,4 +123,32 @@ func TestRetry(t *testing.T) {
 		assert.Equal(t, 3, count)
 		assert.Equal(t, io.EOF, err)
 	})
+
+	t.Run("Jitter", func(t *testing.T) {
+		var count int
+
+		var durs []time.Duration
+		last := time.Now()
+		New(func() error {
+			durs = append(durs, time.Since(last))
+			last = time.Now()
+			count++
+			return io.EOF
+		}, time.Millisecond*10).Attempts(500).Jitter(0, 2).Run()
+
+		avg := avgDurations(durs)
+		t.Logf("avg dur: %v", avg)
+
+		if avg < time.Second*4 || avg > time.Second*6 {
+			t.Errorf("bad avg %v", avg)
+		}
+	})
+}
+
+func avgDurations(durs []time.Duration) time.Duration {
+	var sum time.Duration
+	for _, dur := range durs {
+		sum += dur
+	}
+	return sum / time.Duration(len(durs))
 }
