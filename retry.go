@@ -3,167 +3,185 @@ package retry
 
 import (
 	"context"
-	"log"
-	"net"
+	"math/rand"
 	"time"
 
 	"github.com/pkg/errors"
 )
 
-// Attempts calls f attempts times until it doesn't return an error.
-func Attempts(attempts int, delay time.Duration, f func() error) error {
-	var err error
-	for i := 0; i < attempts; i++ {
-		if err = f(); err == nil {
-			return nil
-		}
-		time.Sleep(delay)
-	}
-	return err
+// Retry holds state about a retryable operation.
+// Callers should create this via New.
+type Retry struct {
+	sleepDur func() time.Duration
+
+	// preConditions are ran before each call to fn.
+	preConditions []func() bool
+
+	// postConditions are ran after each call to fn.
+	postConditions []func(err error) bool
 }
 
-// Timeout calls f until timeout is exceeded.
-func Timeout(timeout, delay time.Duration, f func() error) error {
-	var err error
-	for maxTime := time.Now().Add(timeout); time.Now().Before(maxTime); time.Sleep(delay) {
-		if err = f(); err == nil {
-			return nil
-		}
+// New creates a new retry.
+// The default retry will run forever, sleeping sleep.
+func New(sleep time.Duration) *Retry {
+	r := &Retry{
+		sleepDur: func() time.Duration {
+			return sleep
+		},
 	}
-	return err
+
+	r.appendPostCondition(func(err error) bool {
+		return err != nil
+	})
+
+	return r
 }
 
-var errCeilLessThanFloor = errors.New("ceiling cannot be less than the floor")
-
-// notNil is a condition function that if passed to a Backoff,
-// will continue retrying until the error is nil.
-func notNil(err error) bool { return err != nil }
-
-// Backoff implements an exponential backoff algorithm.
-// It calls f before timeout is exceeded using ceil as a maximum sleep
-// interval and floor as the start interval.
-// Since calls to f may take an undefined amount of time, Backoff cannot guarantee
-// it will return by timeout.
-// If timeout is 0, it will run until the function returns a nil error.
-func Backoff(timeout, ceil, floor time.Duration, f func() error) error {
-	return BackoffWhile(timeout, ceil, floor, f, notNil)
+func (r *Retry) appendPreCondition(fn func() bool) {
+	r.preConditions = append(r.preConditions, fn)
+}
+func (r *Retry) appendPostCondition(fn func(err error) bool) {
+	r.postConditions = append(r.postConditions, fn)
 }
 
-// BackoffWhile implements an exponential backoff algorithm.
-//
-// It calls f before timeout is exceeded, using ceil as a maximum sleep interval,
-// and floor as the starting interval.
-//
-// It will continue calling f until either the timeout is exceeded or cond(f()) == false.
-//
-// If timeout is 0, f will be called until cond(f()) == false.
-func BackoffWhile(timeout, ceil, floor time.Duration, f func() error, cond func(error) bool) error {
-	if ceil < floor {
-		return errCeilLessThanFloor
-	}
-
-	var deadline time.Time
-	if timeout != 0 {
-		deadline = time.Now().Add(timeout)
-	}
-
-	delay := floor
-	var err error
-
-	for {
-		err = f()
-		if !cond(err) {
-			return err
-		}
-
-		// since we're about to sleep for delay, we may as well
-		// factor it into our deadline calculation.
-		if timeout != 0 && time.Now().Add(delay).After(deadline) {
-			return err
-		}
-		time.Sleep(delay)
-		if delay < ceil {
-			delay = delay * 2
-			if delay > ceil {
-				delay = ceil
+// OnErrors returns a post condition which retries on one
+// of the provided errors.
+func OnErrors(errs ...error) func(err error) bool {
+	return func(err error) bool {
+		for _, checkErr := range errs {
+			if errors.Cause(err) == checkErr {
+				return true
 			}
 		}
+		return false
 	}
 }
 
-// BackoffContext implements an exponential backoff algorithm.
-// It calls f before the context is cancelled using ceil as a maximum sleep
-// interval and floor as the start interval.
-func BackoffContext(ctx context.Context, ceil, floor time.Duration, f func() error) error {
-	return BackoffContextWhile(ctx, ceil, floor, f, notNil)
+// Condition adds a retry condition.
+// All conditions must return true for the retry to progress.
+func (r *Retry) Condition(fn func(err error) bool) *Retry {
+	r.appendPostCondition(fn)
+	return r
 }
 
-func BackoffContextWhile(ctx context.Context, ceil, floor time.Duration, f func() error, cond func(error) bool) error {
-	if ceil < floor {
-		return errCeilLessThanFloor
-	}
-
-	delay := floor
-	var err error
-
-	for {
-		err = f()
-		if !cond(err) {
-			return err
+func (r *Retry) preCheck() bool {
+	for _, fn := range r.preConditions {
+		if !fn() {
+			return false
 		}
+	}
+	return true
+}
 
-		t := time.NewTimer(delay)
+func (r *Retry) postCheck(err error) bool {
+	for _, fn := range r.postConditions {
+		if !fn(err) {
+			return false
+		}
+	}
+	return true
+}
+
+// Attempts sets the maximum amount of retry attempts
+// before the current error is returned.
+func (r *Retry) Attempts(n int) *Retry {
+	var iterations int
+	r.appendPreCondition(func() bool {
+		ok := iterations < n
+		iterations++
+		return ok
+	})
+	return r
+}
+
+// Context bounds the retry to when the context expires.
+func (r *Retry) Context(ctx context.Context) *Retry {
+	r.appendPreCondition(func() bool {
 		select {
 		case <-ctx.Done():
-			t.Stop()
-			return err
-		case <-t.C:
+			return false
+		default:
+			return true
 		}
+	})
+	return r
+}
 
+// Backoff turns retry into an exponential backoff
+// with a maximum sleep of ceil.
+func (r *Retry) Backoff(ceil time.Duration) *Retry {
+	const growth = 2
+
+	// start delay at half so that
+	// the first iteration of sleepDur doubles it.
+	delay := r.sleepDur() / growth
+
+	if delay == 0 {
+		panic("retry: delay must not be zero (is it less than 2 nanoseconds?) ")
+	}
+
+	r.sleepDur = func() time.Duration {
 		if delay < ceil {
-			delay = delay * 2
+			delay = delay * growth
 			if delay > ceil {
 				delay = ceil
 			}
 		}
+		return delay
 	}
+
+	return r
 }
 
-type Listener struct {
-	LogTmpErr func(err error)
-	net.Listener
+// Timeout returns the retry with a bounding timeout.
+func (r *Retry) Timeout(to time.Duration) *Retry {
+	deadline := time.Now().Add(to)
+
+	r.appendPreCondition(func() bool {
+		return time.Now().Before(deadline)
+	})
+
+	return r
 }
 
-const (
-	initialListenerDelay = 5 * time.Millisecond
-	maxListenerDelay     = time.Second
-)
+// Jitter adds some random jitter to the retry's sleep.
+//
+// Ratio must be between 0 and 1, and determines how jittery
+// the sleeps will be. For example, a rat of 0.1 and a sleep of 1s restricts the
+// jitter to the range of 900ms to 1.1 seconds.
+func (r *Retry) Jitter(rat float64) *Retry {
+	if !(rat < 1 && rat > 0) {
+		panic("retry: rat must be (0, 1)")
+	}
 
-func (l *Listener) Accept() (net.Conn, error) {
-	var retryDelay time.Duration
-	for {
-		c, err := l.Listener.Accept()
-		if err != nil {
-			ne, ok := err.(net.Error)
-			if ok && ne.Temporary() {
-				if retryDelay == 0 {
-					retryDelay = initialListenerDelay
-				} else {
-					retryDelay *= 2
-					if retryDelay > maxListenerDelay {
-						retryDelay = maxListenerDelay
-					}
-				}
-				if l.LogTmpErr == nil {
-					log.Printf("retry: temp error accepting next connection: %v; retrying in %v", err, retryDelay)
-				} else {
-					l.LogTmpErr(err)
-				}
-				time.Sleep(retryDelay)
-				continue
-			}
-			return nil, err
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	underlyingSleep := r.sleepDur
+	r.sleepDur = func() time.Duration {
+		dur := underlyingSleep()
+
+		var (
+			minDuration = float64(dur)*1 - rat
+			maxDuration = float64(dur)*1 + rat
+		)
+
+		dur = time.Duration(minDuration) + time.Duration(rnd.Int63n(int64(maxDuration)-int64(minDuration)))
+		return dur
+	}
+
+	return r
+}
+
+// Run runs the retry.
+// The retry must not be ran twice.
+func (r *Retry) Run(fn func() error) error {
+	err := errors.Errorf("didn't run a single iteration?")
+	for r.preCheck() {
+		err = fn()
+		if !r.postCheck(err) {
+			return err
 		}
-		return c, nil
+		time.Sleep(r.sleepDur())
 	}
+	return err
 }
