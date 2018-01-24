@@ -147,10 +147,12 @@ func (r *Retry) Timeout(to time.Duration) *Retry {
 
 // Jitter adds some random jitter to the retry's sleep.
 //
-// It will multiply the sleep by a random between min and max.
-func (r *Retry) Jitter(min, max float64) *Retry {
-	if max <= min {
-		panic("retry: min must be less than max")
+// Ratio must be between 0 and 1, and determines how jittery
+// the sleeps will be. For example, a rat of 0.1 and a sleep of 1s restricts the
+// jitter to the range of 900ms to 1.1 seconds.
+func (r *Retry) Jitter(rat float64) *Retry {
+	if !(rat < 1 && rat > 0) {
+		panic("retry: rat must be (0, 1)")
 	}
 
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -160,8 +162,8 @@ func (r *Retry) Jitter(min, max float64) *Retry {
 		dur := underlyingSleep()
 
 		var (
-			minDuration = float64(dur) * min
-			maxDuration = float64(dur) * max
+			minDuration = float64(dur)*1 - rat
+			maxDuration = float64(dur)*1 + rat
 		)
 
 		dur = time.Duration(minDuration) + time.Duration(rnd.Int63n(int64(maxDuration)-int64(minDuration)))

@@ -134,7 +134,7 @@ func TestRetry(t *testing.T) {
 			last = time.Now()
 			count++
 			return io.EOF
-		}, time.Millisecond*10).Attempts(500).Jitter(0, 2).Run()
+		}, time.Millisecond*10).Attempts(500).Jitter(0.9999).Run()
 
 		avg := avgDurations(durs)
 		t.Logf("avg dur: %v", avg)
