@@ -132,7 +132,7 @@ func TestRetry(t *testing.T) {
 
 		var durs []time.Duration
 		last := time.Now()
-		New(time.Millisecond).Attempts(500).Jitter(0.9999).Run(func() error {
+		New(time.Millisecond).Attempts(500).Jitter(0.9991).Run(func() error {
 			durs = append(durs, time.Since(last))
 			last = time.Now()
 			count++
