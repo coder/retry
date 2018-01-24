@@ -161,8 +161,8 @@ func (r *Retry) Jitter(rat float64) *Retry {
 		dur := underlyingSleep()
 
 		var (
-			minDuration = float64(dur)*1 - rat
-			maxDuration = float64(dur)*1 + rat
+			minDuration = float64(dur) * (1 - rat)
+			maxDuration = float64(dur) * (1 + rat)
 		)
 
 		dur = time.Duration(minDuration) + time.Duration(rnd.Int63n(int64(maxDuration)-int64(minDuration)))
