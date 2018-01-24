@@ -94,13 +94,15 @@ func TestRetry(t *testing.T) {
 				return io.ErrNoProgress
 			}
 			count++
+			if count%2 == 0 {
+				return io.ErrUnexpectedEOF
+			}
 			return io.EOF
-		}, time.Millisecond).Cond(func(err error) bool {
-			return err == io.EOF
-		}).Run()
+		}, time.Millisecond).Condition(OnErrors(io.ErrUnexpectedEOF, io.EOF)).Run()
 
 		assert.Equal(t, count, 5)
 		assert.Equal(t, io.ErrNoProgress, err)
+
 	})
 
 	t.Run("Context", func(t *testing.T) {

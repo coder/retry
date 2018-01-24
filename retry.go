@@ -8,16 +8,17 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Retry contains
+// Retry holds state about a retryable operation.
+// Callers should create this via New.
 type Retry struct {
 	fn       func() error
 	sleepDur func() time.Duration
 
-	cond func(err error) bool
+	// preConditions are ran before each call to fn.
+	preConditions []func() bool
 
-	// conts contains a list of functions which must return true in order
-	// for the retry to continue.
-	conts []func() bool
+	// postConditions are ran after each call to fn.
+	postConditions []func(err error) bool
 
 	iteration int
 }
@@ -30,23 +31,38 @@ func New(fn func() error, sleep time.Duration) *Retry {
 		sleepDur: func() time.Duration {
 			return sleep
 		},
-		cond: func(err error) bool {
-			return true
-		},
 	}
 }
 
-// Cond lets the caller override the default condition behaviour.
-// The retry only continues if fn returns true
-func (r *Retry) Cond(fn func(err error) bool) *Retry {
-	r.cond = fn
+func (r *Retry) appendPreCondition(fn func() bool) {
+	r.preConditions = append(r.preConditions, fn)
+}
+func (r *Retry) appendPostCondition(fn func(err error) bool) {
+	r.postConditions = append(r.postConditions, fn)
+}
+
+// OnErrors returns a post condition which retries on one
+// of the provided errors.
+func OnErrors(errs ...error) func(err error) bool {
+	return func(err error) bool {
+		for _, checkErr := range errs {
+			if err == checkErr {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// Condition adds a retry condition.
+// All conditions must return true for the retry to progress.
+func (r *Retry) Condition(fn func(err error) bool) *Retry {
+	r.appendPostCondition(fn)
 	return r
 }
 
-// cont iterates over each continue function, returning
-// false if any of them do.
-func (r *Retry) cont() bool {
-	for _, fn := range r.conts {
+func (r *Retry) preCheck() bool {
+	for _, fn := range r.preConditions {
 		if !fn() {
 			return false
 		}
@@ -54,14 +70,22 @@ func (r *Retry) cont() bool {
 	return true
 }
 
-func (r *Retry) appendCont(fn func() bool) {
-	r.conts = append(r.conts, fn)
+func (r *Retry) postCheck(err error) bool {
+	if err == nil {
+		return false
+	}
+	for _, fn := range r.postConditions {
+		if !fn(err) {
+			return false
+		}
+	}
+	return true
 }
 
 // Attempts sets the maximum amount of retry attempts
 // before the current error is returned.
 func (r *Retry) Attempts(n int) *Retry {
-	r.appendCont(func() bool {
+	r.appendPreCondition(func() bool {
 		return r.iteration < n
 	})
 	return r
@@ -69,7 +93,7 @@ func (r *Retry) Attempts(n int) *Retry {
 
 // Context bounds the retry to when the context expires.
 func (r *Retry) Context(ctx context.Context) *Retry {
-	r.appendCont(func() bool {
+	r.appendPreCondition(func() bool {
 		select {
 		case <-ctx.Done():
 			return false
@@ -110,7 +134,7 @@ func (r *Retry) Backoff(ceil time.Duration) *Retry {
 func (r *Retry) Timeout(to time.Duration) *Retry {
 	deadline := time.Now().Add(to)
 
-	r.appendCont(func() bool {
+	r.appendPreCondition(func() bool {
 		return time.Now().Before(deadline)
 	})
 
@@ -121,9 +145,9 @@ func (r *Retry) Timeout(to time.Duration) *Retry {
 // The retry must not be ran twice.
 func (r *Retry) Run() error {
 	err := errors.Errorf("didn't run a single iteration?")
-	for ; r.cont(); r.iteration++ {
+	for ; r.preCheck(); r.iteration++ {
 		err = r.fn()
-		if !r.cond(err) || err == nil {
+		if !r.postCheck(err) {
 			return err
 		}
 		time.Sleep(r.sleepDur())
