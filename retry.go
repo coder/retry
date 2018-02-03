@@ -173,7 +173,7 @@ func (r *Retry) Jitter(rat float64) *Retry {
 }
 
 // Log adds a function to log any returned errors.
-// It is appended as a post condition that always returns true.
+// It is added as a post condition that always returns true.
 // If you want an error to stop the retry and not be logged,
 // use Log() after the Condition.
 // If you want an error to stop the retry and be logged,
