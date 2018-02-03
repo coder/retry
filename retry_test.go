@@ -8,12 +8,18 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRetry(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Attempts", func(t *testing.T) {
 		t.Parallel()
+
 		t.Run("Respects count and sleeps between attempts", func(t *testing.T) {
+			t.Parallel()
+
 			count := 0
 			start := time.Now()
 
@@ -29,6 +35,8 @@ func TestRetry(t *testing.T) {
 		})
 
 		t.Run("returns as soon as error is nil", func(t *testing.T) {
+			t.Parallel()
+
 			start := time.Now()
 
 			var count int
@@ -41,9 +49,13 @@ func TestRetry(t *testing.T) {
 			assert.WithinDuration(t, time.Now(), start, time.Millisecond)
 		})
 	})
+
 	t.Run("Backoff", func(t *testing.T) {
 		t.Parallel()
+
 		t.Run("return when nil", func(t *testing.T) {
+			t.Parallel()
+
 			var count int
 			err := New(time.Millisecond).Timeout(time.Minute).Backoff(time.Second).Run(func() error {
 				count++
@@ -60,7 +72,9 @@ func TestRetry(t *testing.T) {
 
 	t.Run("Timeout", func(t *testing.T) {
 		t.Parallel()
+
 		t.Run("Respects timeout and sleeps between attempts", func(t *testing.T) {
+			t.Parallel()
 			count := 0
 			start := time.Now()
 
@@ -76,6 +90,7 @@ func TestRetry(t *testing.T) {
 		})
 
 		t.Run("returns as soon as error is nil", func(t *testing.T) {
+			t.Parallel()
 			start := time.Now()
 
 			New(time.Minute).Timeout(time.Hour).Run(func() error {
@@ -145,6 +160,30 @@ func TestRetry(t *testing.T) {
 		if avg < time.Microsecond*900 || avg > time.Microsecond*1200 {
 			t.Errorf("bad avg %v", avg)
 		}
+	})
+
+	t.Run("Log", func(t *testing.T) {
+		t.Parallel()
+
+		err := errors.New("meow")
+		n := 0
+
+		New(time.Millisecond).Log(func(e error) {
+			require.Equal(t, err, e)
+		}).Run(func() error {
+			n++
+
+			// indexed from one :(
+			switch n {
+			case 1:
+				return err
+			case 2:
+				return nil
+			}
+
+			t.Fatal("should not reach this line.")
+			panic("?")
+		})
 	})
 }
 
