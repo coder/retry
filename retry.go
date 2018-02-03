@@ -173,19 +173,12 @@ func (r *Retry) Jitter(rat float64) *Retry {
 }
 
 // Log adds a function to log any returned errors.
+// It is appended as a post condition that always returns true.
 func (r *Retry) Log(logFn func(error)) *Retry {
-	r.postConditions = append(
-		[]func(error) bool{
-			func(err error) bool {
-				if err != nil {
-					logFn(err)
-				}
-				return true
-			},
-		},
-		r.postConditions...,
-	)
-	return r
+	return r.Condition(func(err error) bool {
+		logFn(err)
+		return true
+	})
 }
 
 // Run runs the retry.
