@@ -134,7 +134,14 @@ func (r *Retry) Backoff(ceil time.Duration) *Retry {
 }
 
 // Timeout returns the retry with a bounding timeout.
+// If the passed timeout is 0, Timeout does nothing. This has been done
+// to match the behaviour of the previous retry API and to make it easy
+// for functions that call into retry to offer optional timeouts.
 func (r *Retry) Timeout(to time.Duration) *Retry {
+	if to == 0 {
+		return r
+	}
+
 	deadline := time.Now().Add(to)
 
 	r.appendPreCondition(func() bool {
