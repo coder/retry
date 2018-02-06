@@ -156,10 +156,10 @@ func TestRetry(t *testing.T) {
 
 		avg := avgDurations(durs)
 
+		t.Logf("avg dur: %v", avg)
+
 		if avg < time.Microsecond*900 || avg > time.Microsecond*1200 {
-			t.Errorf("bad avg %v", avg)
-		} else {
-			t.Logf("avg dur: %v", avg)
+			t.Errorf("bad avg dur")
 		}
 	})
 
