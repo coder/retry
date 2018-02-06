@@ -97,12 +97,7 @@ func (r *Retry) Attempts(n int) *Retry {
 // Context bounds the retry to when the context expires.
 func (r *Retry) Context(ctx context.Context) *Retry {
 	r.appendPreCondition(func() bool {
-		select {
-		case <-ctx.Done():
-			return false
-		default:
-			return true
-		}
+		return ctx.Err() == nil
 	})
 	return r
 }
