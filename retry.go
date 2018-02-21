@@ -30,7 +30,7 @@ func New(sleep time.Duration) *Retry {
 		},
 	}
 
-	r.appendPostCondition(func(err error) bool {
+	r.appendPostConditions(func(err error) bool {
 		return err != nil
 	})
 
@@ -40,7 +40,7 @@ func New(sleep time.Duration) *Retry {
 func (r *Retry) appendPreCondition(fn func() bool) {
 	r.preConditions = append(r.preConditions, fn)
 }
-func (r *Retry) appendPostCondition(fns ...Condition) {
+func (r *Retry) appendPostConditions(fns ...Condition) {
 	for _, fn := range fns {
 		r.postConditions = append(r.postConditions, fn)
 	}
@@ -77,7 +77,7 @@ func NotOnErrors(errs ...error) Condition {
 // Condition the passed retry conditions.
 // All conditions must return true for the retry to progress.
 func (r *Retry) Condition(fns ...Condition) *Retry {
-	r.appendPostCondition(fns...)
+	r.appendPostConditions(fns...)
 	return r
 }
 
