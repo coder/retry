@@ -74,10 +74,18 @@ func NotOnErrors(errs ...error) Condition {
 	}
 }
 
-// Condition the passed retry conditions.
+// Condition appends the passed retry conditions.
 // All conditions must return true for the retry to progress.
-func (r *Retry) Condition(fns ...Condition) *Retry {
+func (r *Retry) Conditions(fns ...Condition) *Retry {
 	r.appendPostConditions(fns...)
+	return r
+}
+
+// Condition appends the passed retry condition.
+// The condition must return true for the retry to progress.
+// Deprecated: Use Conditions instead.
+func (r *Retry) Condition(fn Condition) *Retry {
+	r.appendPostConditions(fn)
 	return r
 }
 
