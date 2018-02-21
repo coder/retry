@@ -18,7 +18,7 @@ type Retry struct {
 	preConditions []func() bool
 
 	// postConditions are ran after each call to fn.
-	postConditions []func(err error) bool
+	postConditions []Condition
 }
 
 // New creates a new retry.
@@ -40,13 +40,14 @@ func New(sleep time.Duration) *Retry {
 func (r *Retry) appendPreCondition(fn func() bool) {
 	r.preConditions = append(r.preConditions, fn)
 }
-func (r *Retry) appendPostCondition(fn func(err error) bool) {
+func (r *Retry) appendPostCondition(fn Condition) {
 	r.postConditions = append(r.postConditions, fn)
 }
 
+// Condition is a function that decides based on the given error whether to retry.
 type Condition func(error) bool
 
-// OnErrors returns a post condition which retries on one
+// OnErrors returns a condition which retries on one
 // of the provided errors.
 func OnErrors(errs ...error) Condition {
 	return func(err error) bool {
@@ -59,7 +60,7 @@ func OnErrors(errs ...error) Condition {
 	}
 }
 
-// NotOnErrors returns a post condition which retries only if the error
+// NotOnErrors returns a condition which retries only if the error
 // does not match one of the provided errors.
 func NotOnErrors(errs ...error) Condition {
 	return func(err error) bool {
@@ -74,7 +75,7 @@ func NotOnErrors(errs ...error) Condition {
 
 // Condition adds a retry condition.
 // All conditions must return true for the retry to progress.
-func (r *Retry) Condition(fn func(err error) bool) *Retry {
+func (r *Retry) Condition(fn Condition) *Retry {
 	r.appendPostCondition(fn)
 	return r
 }
