@@ -44,9 +44,24 @@ func (r *Retry) appendPostCondition(fn func(err error) bool) {
 	r.postConditions = append(r.postConditions, fn)
 }
 
+type Condition func(error) bool
+
 // OnErrors returns a post condition which retries on one
 // of the provided errors.
-func OnErrors(errs ...error) func(err error) bool {
+func OnErrors(errs ...error) Condition {
+	return func(err error) bool {
+		for _, checkErr := range errs {
+			if errors.Cause(err) == checkErr {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// NotOnErrors returns a post condition which retries only if the error
+// does not match one of the provided errors.
+func NotOnErrors(errs ...error) Condition {
 	return func(err error) bool {
 		for _, checkErr := range errs {
 			if errors.Cause(err) == checkErr {
