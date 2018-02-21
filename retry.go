@@ -47,8 +47,7 @@ func (r *Retry) appendPostCondition(fn Condition) {
 // Condition is a function that decides based on the given error whether to retry.
 type Condition func(error) bool
 
-// OnErrors returns a condition which retries on one
-// of the provided errors.
+// OnErrors returns a condition which retries on one of the provided errors.
 func OnErrors(errs ...error) Condition {
 	return func(err error) bool {
 		for _, checkErr := range errs {
@@ -66,10 +65,10 @@ func NotOnErrors(errs ...error) Condition {
 	return func(err error) bool {
 		for _, checkErr := range errs {
 			if errors.Cause(err) == checkErr {
-				return true
+				return false
 			}
 		}
-		return false
+		return true
 	}
 }
 
