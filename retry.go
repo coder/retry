@@ -40,8 +40,10 @@ func New(sleep time.Duration) *Retry {
 func (r *Retry) appendPreCondition(fn func() bool) {
 	r.preConditions = append(r.preConditions, fn)
 }
-func (r *Retry) appendPostCondition(fn Condition) {
-	r.postConditions = append(r.postConditions, fn)
+func (r *Retry) appendPostCondition(fns ...Condition) {
+	for _, fn := range fns {
+		r.postConditions = append(r.postConditions, fn)
+	}
 }
 
 // Condition is a function that decides based on the given error whether to retry.
@@ -72,10 +74,10 @@ func NotOnErrors(errs ...error) Condition {
 	}
 }
 
-// Condition adds a retry condition.
+// Condition the passed retry conditions.
 // All conditions must return true for the retry to progress.
-func (r *Retry) Condition(fn Condition) *Retry {
-	r.appendPostCondition(fn)
+func (r *Retry) Condition(fns ...Condition) *Retry {
+	r.appendPostCondition(fns...)
 	return r
 }
 
