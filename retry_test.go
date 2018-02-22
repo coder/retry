@@ -105,19 +105,22 @@ func TestRetry(t *testing.T) {
 		t.Parallel()
 		count := 0
 
-		err := New(time.Millisecond).Condition(OnErrors(io.ErrUnexpectedEOF, io.EOF)).Run(func() error {
-			if count == 5 {
-				return io.ErrNoProgress
-			}
-			count++
-			if count%2 == 0 {
-				return errors.WithStack(io.ErrUnexpectedEOF)
-			}
-			return io.EOF
-		})
+		err := New(time.Millisecond).
+			Condition(NotOnErrors(io.ErrShortWrite)).
+			Condition(OnErrors(io.ErrUnexpectedEOF, io.EOF, io.ErrShortWrite)).
+			Run(func() error {
+				count++
+				if count == 5 {
+					return io.ErrShortWrite
+				}
+				if count%2 == 0 {
+					return errors.WithStack(io.ErrUnexpectedEOF)
+				}
+				return io.EOF
+			})
 
-		assert.Equal(t, count, 5)
-		assert.Equal(t, io.ErrNoProgress, err)
+		assert.Equal(t, 5, count)
+		assert.Equal(t, io.ErrShortWrite, err)
 
 	})
 

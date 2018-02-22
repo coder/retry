@@ -18,7 +18,7 @@ type Retry struct {
 	preConditions []func() bool
 
 	// postConditions are ran after each call to fn.
-	postConditions []func(err error) bool
+	postConditions []Condition
 }
 
 // New creates a new retry.
@@ -30,7 +30,7 @@ func New(sleep time.Duration) *Retry {
 		},
 	}
 
-	r.appendPostCondition(func(err error) bool {
+	r.appendPostConditions(func(err error) bool {
 		return err != nil
 	})
 
@@ -40,13 +40,17 @@ func New(sleep time.Duration) *Retry {
 func (r *Retry) appendPreCondition(fn func() bool) {
 	r.preConditions = append(r.preConditions, fn)
 }
-func (r *Retry) appendPostCondition(fn func(err error) bool) {
-	r.postConditions = append(r.postConditions, fn)
+func (r *Retry) appendPostConditions(fns ...Condition) {
+	for _, fn := range fns {
+		r.postConditions = append(r.postConditions, fn)
+	}
 }
 
-// OnErrors returns a post condition which retries on one
-// of the provided errors.
-func OnErrors(errs ...error) func(err error) bool {
+// Condition is a function that decides based on the given error whether to retry.
+type Condition func(error) bool
+
+// OnErrors returns a condition which retries on one of the provided errors.
+func OnErrors(errs ...error) Condition {
 	return func(err error) bool {
 		for _, checkErr := range errs {
 			if errors.Cause(err) == checkErr {
@@ -57,10 +61,31 @@ func OnErrors(errs ...error) func(err error) bool {
 	}
 }
 
-// Condition adds a retry condition.
+// NotOnErrors returns a condition which retries only if the error
+// does not match one of the provided errors.
+func NotOnErrors(errs ...error) Condition {
+	return func(err error) bool {
+		for _, checkErr := range errs {
+			if errors.Cause(err) == checkErr {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+// Condition appends the passed retry conditions.
 // All conditions must return true for the retry to progress.
-func (r *Retry) Condition(fn func(err error) bool) *Retry {
-	r.appendPostCondition(fn)
+func (r *Retry) Conditions(fns ...Condition) *Retry {
+	r.appendPostConditions(fns...)
+	return r
+}
+
+// Condition appends the passed retry condition.
+// The condition must return true for the retry to progress.
+// Deprecated: Use Conditions instead.
+func (r *Retry) Condition(fn Condition) *Retry {
+	r.appendPostConditions(fn)
 	return r
 }
 
