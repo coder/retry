@@ -57,10 +57,10 @@ fmt.Printf("err: %v, took %v\n", err, time.Since(start))
 
 ---
 
-This code may sleep anywhere from 500ms to 1.5s between attempts.
+This code will sleep anywhere from 500ms to 1.5s between attempts.
 
-It will return the `not enough time has elapsed` error after 2.5 to 7.5 seconds
-since the attempts condition will fail before the timeout.
+The attempts condition will fail before the timeout. It will return the
+`not enough time...` error after 2.5 to 7.5 seconds.
 
 ```go
 start := time.Now()
