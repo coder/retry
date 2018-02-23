@@ -59,7 +59,8 @@ fmt.Printf("err: %v, took %v\n", err, time.Since(start))
 
 This code may sleep anywhere from 500ms to 1.5s between attempts.
 
-It will return the `not enough time has elapsed` error after about 10 seconds.
+It will return the `not enough time has elapsed` error after 2.5 to 7.5 seconds
+since the attempts condition will fail before the timeout.
 
 ```go
 start := time.Now()
@@ -67,6 +68,7 @@ start := time.Now()
 err := retry.New(time.Second).
     Jitter(0.5).
     Timeout(time.Second * 10).
+    Attempts(5).
     Run(
         func() error {
             return errors.New("not enough time has elapsed")
