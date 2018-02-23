@@ -11,7 +11,7 @@ An expressive, flexible retry package for Go.
   - Jitter
   - Bound to context
   - Bound to timeout
-  - Limit total attempt count
+  - Limit total number of attempts
   - Retry only on certain kinds of errors
     - Defaults to retrying on all errors
 - Retrying net.Listener wrapper
