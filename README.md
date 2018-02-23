@@ -6,14 +6,15 @@ An expressive, flexible retry package for Go.
 
 ## Features
 
-- Exponential backoff
-- Jitter
-- Bound to context
-- Bound to timeout
-- Bound to attempt count
-- Bound to certain kinds of errors
-- Any combination of the above
-- Retrying net.Listener wrapper 
+- Any combination of:
+  - Exponential backoff
+  - Jitter
+  - Bound to contexdt
+  - Bound to timeout
+  - Limit total attempt count
+  - Retry only on certain kinds of errors
+    - Defaults to retrying on all errors
+- Retrying net.Listener wrapper
 
 ## Examples
 
@@ -46,6 +47,26 @@ start := time.Now()
 
 err := retry.New(time.Millisecond).
     Backoff(time.Millisecond * 50).
+    Run(
+        func() error {
+            return errors.New("not enough time has elapsed")
+        },
+    )
+fmt.Printf("err: %v, took %v\n", err, time.Since(start))
+```
+
+---
+
+This code may sleep anywhere from 500ms to 1.5s between attempts.
+
+It will return the `not enough time has elapsed` error after about 10 seconds.
+
+```go
+start := time.Now()
+
+err := retry.New(time.Second).
+    Jitter(0.5).
+    Timeout(time.Second * 10).
     Run(
         func() error {
             return errors.New("not enough time has elapsed")
