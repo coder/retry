@@ -9,7 +9,7 @@ An expressive, flexible retry package for Go.
 - Any combination of:
   - Exponential backoff
   - Jitter
-  - Bound to contexdt
+  - Bound to context
   - Bound to timeout
   - Limit total attempt count
   - Retry only on certain kinds of errors
