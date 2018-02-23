@@ -76,3 +76,7 @@ err := retry.New(time.Second).
     )
 fmt.Printf("err: %v, took %v\n", err, time.Since(start))
 ```
+
+## We're Hiring!
+
+If you're a passionate Go developer, send your resume and/or GitHub link to [jobs@coder.com](mailto:jobs@coder.com).
