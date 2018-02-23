@@ -97,7 +97,7 @@ func TestListener(t *testing.T) {
 			case 3:
 				return nil, nil
 			default:
-				t.Fatal("test listener called too many times; callCount: %v", callCount)
+				t.Fatalf("test listener called too many times; callCount: %v", callCount)
 				panic("unreachable")
 			}
 		}
