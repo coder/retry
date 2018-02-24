@@ -139,7 +139,7 @@ func (r *Retry) Context(ctx context.Context) *Retry {
 func (r *Retry) Backoff(ceil time.Duration) *Retry {
 	const growth = 2
 
-	// start delay at half so that
+	// Start delay at half so that
 	// the first iteration of sleepDur doubles it.
 	delay := r.sleepDur() / growth
 
@@ -222,7 +222,7 @@ func (r *Retry) Log(logFn func(error)) *Retry {
 // Run runs the retry.
 // The retry must not be ran twice.
 func (r *Retry) Run(fn func() error) error {
-	err := errors.Errorf("didn't run a single iteration?")
+	err := errors.New("didn't run a single iteration?")
 	for r.preCheck() {
 		err = fn()
 		if !r.postCheck(err) {
