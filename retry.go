@@ -53,7 +53,7 @@ type Condition func(error) bool
 func OnErrors(errs ...error) Condition {
 	return func(err error) bool {
 		for _, checkErr := range errs {
-			if errors.Cause(err) == checkErr {
+			if err == checkErr {
 				return true
 			}
 		}
@@ -66,7 +66,7 @@ func OnErrors(errs ...error) Condition {
 func NotOnErrors(errs ...error) Condition {
 	return func(err error) bool {
 		for _, checkErr := range errs {
-			if errors.Cause(err) == checkErr {
+			if err == checkErr {
 				return false
 			}
 		}
@@ -76,7 +76,15 @@ func NotOnErrors(errs ...error) Condition {
 
 // Condition appends the passed retry conditions.
 // All conditions must return true for the retry to progress.
+// The error passed to the retry conditions will be the result
+// of errors.Cause() on the original error from  the run function.
 func (r *Retry) Conditions(fns ...Condition) *Retry {
+	for i, fn := range fns {
+		fns[i] = func(err error) bool {
+			err = errors.Cause(err)
+			return fn(err)
+		}
+	}
 	r.appendPostConditions(fns...)
 	return r
 }
@@ -85,8 +93,7 @@ func (r *Retry) Conditions(fns ...Condition) *Retry {
 // The condition must return true for the retry to progress.
 // Deprecated: Use Conditions instead.
 func (r *Retry) Condition(fn Condition) *Retry {
-	r.appendPostConditions(fn)
-	return r
+	return r.Conditions(fn)
 }
 
 func (r *Retry) preCheck() bool {
@@ -206,7 +213,7 @@ func (r *Retry) Jitter(rat float64) *Retry {
 // If you want an error to stop the retry and be logged,
 // use Log() before the Condition.
 func (r *Retry) Log(logFn func(error)) *Retry {
-	return r.Condition(func(err error) bool {
+	return r.Conditions(func(err error) bool {
 		logFn(err)
 		return true
 	})

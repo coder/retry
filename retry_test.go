@@ -106,18 +106,19 @@ func TestRetry(t *testing.T) {
 		count := 0
 
 		err := New(time.Millisecond).
-			Condition(NotOnErrors(io.ErrShortWrite)).
-			Condition(OnErrors(io.ErrUnexpectedEOF, io.EOF, io.ErrShortWrite)).
-			Run(func() error {
-				count++
-				if count == 5 {
-					return io.ErrShortWrite
-				}
-				if count%2 == 0 {
-					return errors.WithStack(io.ErrUnexpectedEOF)
-				}
-				return io.EOF
-			})
+			Conditions(
+				NotOnErrors(io.ErrShortWrite),
+				OnErrors(io.ErrUnexpectedEOF, io.EOF, io.ErrShortWrite),
+			).Run(func() error {
+			count++
+			if count == 5 {
+				return io.ErrShortWrite
+			}
+			if count%2 == 0 {
+				return errors.WithStack(io.ErrUnexpectedEOF)
+			}
+			return io.EOF
+		})
 
 		assert.Equal(t, 5, count)
 		assert.Equal(t, io.ErrShortWrite, err)
