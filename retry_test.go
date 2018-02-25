@@ -141,7 +141,7 @@ func TestRetry(t *testing.T) {
 		})
 
 		assert.Equal(t, 3, count)
-		assert.Equal(t, io.EOF, err)
+		assert.Equal(t, io.EOF, errors.Cause(err))
 	})
 
 	t.Run("Jitter", func(t *testing.T) {

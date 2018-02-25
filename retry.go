@@ -15,7 +15,9 @@ type Retry struct {
 	sleepDur func() time.Duration
 
 	// preConditions are ran before each call to fn.
-	preConditions []func() bool
+	// If the returned error is non nil, then the retry will
+	// stop and the error will be returned.
+	preConditions []preCondition
 
 	// postConditions are ran after each call to fn.
 	postConditions []Condition
@@ -37,7 +39,7 @@ func New(sleep time.Duration) *Retry {
 	return r
 }
 
-func (r *Retry) appendPreCondition(fn func() bool) {
+func (r *Retry) appendPreCondition(fn preCondition) {
 	r.preConditions = append(r.preConditions, fn)
 }
 func (r *Retry) appendPostConditions(fns ...Condition) {
@@ -45,6 +47,16 @@ func (r *Retry) appendPostConditions(fns ...Condition) {
 		r.postConditions = append(r.postConditions, fn)
 	}
 }
+
+// preCondition is a function that decides whether the retry should continue.
+// It takes the previous error as an argument and returns an error
+// if the retry should stop. The error it returns is the error returned to the caller.
+// The reason it takes and returns an error is so that it can return an error describing
+// why the retry stopped. If there was a passed in error, instead of returning a brand new
+// error, it should wrap the error.
+// The passed in error will never be nil. Before the run function runs once, the passed in
+// error will be just be an error saying that the retry was not run even once.
+type preCondition func(error) error
 
 // Condition is a function that decides based on the given error whether to retry.
 type Condition func(error) bool
@@ -89,13 +101,14 @@ func (r *Retry) Condition(fn Condition) *Retry {
 	return r
 }
 
-func (r *Retry) preCheck() bool {
+func (r *Retry) preCheck(err error) error {
 	for _, fn := range r.preConditions {
-		if !fn() {
-			return false
+		perr := fn(err)
+		if perr != nil {
+			return perr
 		}
 	}
-	return true
+	return nil
 }
 
 func (r *Retry) postCheck(err error) bool {
@@ -109,20 +122,30 @@ func (r *Retry) postCheck(err error) bool {
 
 // Attempts sets the maximum amount of retry attempts
 // before the current error is returned.
-func (r *Retry) Attempts(n int) *Retry {
-	var iterations int
-	r.appendPreCondition(func() bool {
-		ok := iterations < n
-		iterations++
-		return ok
+// It will panic if maxAttempts is negative or 0.
+func (r *Retry) Attempts(maxAttempts int) *Retry {
+	if maxAttempts <= 0 {
+		panic("maxAttempts cannot be negative or 0")
+	}
+
+	var i int
+	r.appendPreCondition(func(err error) error {
+		if i >= maxAttempts {
+			return errors.Wrap(err, "no attempts left")
+		}
+		i++
+		return nil
 	})
 	return r
 }
 
 // Context bounds the retry to when the context expires.
 func (r *Retry) Context(ctx context.Context) *Retry {
-	r.appendPreCondition(func() bool {
-		return ctx.Err() == nil
+	r.appendPreCondition(func(err error) error {
+		if ctx.Err() != nil {
+			return errors.Wrap(err, ctx.Err().Error())
+		}
+		return nil
 	})
 	return r
 }
@@ -164,8 +187,12 @@ func (r *Retry) Timeout(to time.Duration) *Retry {
 
 	deadline := time.Now().Add(to)
 
-	r.appendPreCondition(func() bool {
-		return time.Now().Before(deadline)
+	r.appendPreCondition(func(err error) error {
+		now := time.Now()
+		if now.After(deadline) || now.Equal(deadline) {
+			return errors.Wrap(err, "timed out")
+		}
+		return nil
 	})
 
 	return r
@@ -216,12 +243,16 @@ func (r *Retry) Log(logFn func(error)) *Retry {
 // The retry must not be ran twice.
 func (r *Retry) Run(fn func() error) error {
 	err := errors.Errorf("didn't run a single iteration?")
-	for r.preCheck() {
+	for {
+		perr := r.preCheck(err)
+		if perr != nil {
+			return perr
+		}
+
 		err = fn()
 		if !r.postCheck(err) {
 			return err
 		}
 		time.Sleep(r.sleepDur())
 	}
-	return err
 }
