@@ -80,6 +80,7 @@ func NotOnErrors(errs ...error) Condition {
 // of errors.Cause() on the original error from  the run function.
 func (r *Retry) Conditions(fns ...Condition) *Retry {
 	for i, fn := range fns {
+		fn := fn
 		fns[i] = func(err error) bool {
 			err = errors.Cause(err)
 			return fn(err)
