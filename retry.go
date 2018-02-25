@@ -15,8 +15,6 @@ type Retry struct {
 	sleepDur func() time.Duration
 
 	// preConditions are ran before each call to fn.
-	// If the returned error is non nil, then the retry will
-	// stop and the error will be returned.
 	preConditions []preCondition
 
 	// postConditions are ran after each call to fn.
