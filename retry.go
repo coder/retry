@@ -120,14 +120,17 @@ func (r *Retry) postCheck(err error) bool {
 
 // Attempts sets the maximum amount of retry attempts
 // before the current error is returned.
-// It will panic if maxAttempts is negative or 0.
+// If maxAttempts is 0, then r.Run() will return a nil
+// error on any call.
 func (r *Retry) Attempts(maxAttempts int) *Retry {
-	if maxAttempts <= 0 {
-		panic("maxAttempts cannot be negative or 0")
-	}
-
 	var i int
 	r.appendPreCondition(func(err error) error {
+		if maxAttempts < 0 {
+			return errors.New("negative max attempts?")
+		}
+		if maxAttempts == 0 {
+			return nil
+		}
 		if i >= maxAttempts {
 			return errors.Wrap(err, "no attempts left")
 		}
