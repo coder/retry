@@ -123,13 +123,13 @@ func (r *Retry) postCheck(err error) bool {
 // If maxAttempts is 0, then r.Run() will return a nil
 // error on any call.
 func (r *Retry) Attempts(maxAttempts int) *Retry {
-	var i int
+	i := 0
 	r.appendPreCondition(func(err error) error {
-		if maxAttempts < 0 {
-			return errors.New("negative max attempts?")
-		}
 		if maxAttempts == 0 {
 			return nil
+		}
+		if maxAttempts < 0 {
+			return errors.New("negative max attempts?")
 		}
 		if i >= maxAttempts {
 			return errors.Wrap(err, "no attempts left")
