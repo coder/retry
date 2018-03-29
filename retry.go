@@ -79,13 +79,6 @@ func NotOnErrors(errs ...error) Condition {
 // The error passed to the retry conditions will be the result
 // of errors.Cause() on the original error from  the run function.
 func (r *Retry) Conditions(fns ...Condition) *Retry {
-	for i, fn := range fns {
-		fn := fn
-		fns[i] = func(err error) bool {
-			err = errors.Cause(err)
-			return fn(err)
-		}
-	}
 	r.appendPostConditions(fns...)
 	return r
 }
@@ -107,6 +100,7 @@ func (r *Retry) preCheck() bool {
 }
 
 func (r *Retry) postCheck(err error) bool {
+	err = errors.Cause(err)
 	for _, fn := range r.postConditions {
 		if !fn(err) {
 			return false
