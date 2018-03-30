@@ -53,7 +53,7 @@ type Condition func(error) bool
 func OnErrors(errs ...error) Condition {
 	return func(err error) bool {
 		for _, checkErr := range errs {
-			if errors.Cause(err) == checkErr {
+			if err == checkErr {
 				return true
 			}
 		}
@@ -66,7 +66,7 @@ func OnErrors(errs ...error) Condition {
 func NotOnErrors(errs ...error) Condition {
 	return func(err error) bool {
 		for _, checkErr := range errs {
-			if errors.Cause(err) == checkErr {
+			if err == checkErr {
 				return false
 			}
 		}
@@ -76,6 +76,8 @@ func NotOnErrors(errs ...error) Condition {
 
 // Condition appends the passed retry conditions.
 // All conditions must return true for the retry to progress.
+// The error passed to the retry conditions will be the result
+// of errors.Cause() on the original error from  the run function.
 func (r *Retry) Conditions(fns ...Condition) *Retry {
 	r.appendPostConditions(fns...)
 	return r
@@ -85,8 +87,7 @@ func (r *Retry) Conditions(fns ...Condition) *Retry {
 // The condition must return true for the retry to progress.
 // Deprecated: Use Conditions instead.
 func (r *Retry) Condition(fn Condition) *Retry {
-	r.appendPostConditions(fn)
-	return r
+	return r.Conditions(fn)
 }
 
 func (r *Retry) preCheck() bool {
@@ -99,6 +100,7 @@ func (r *Retry) preCheck() bool {
 }
 
 func (r *Retry) postCheck(err error) bool {
+	err = errors.Cause(err)
 	for _, fn := range r.postConditions {
 		if !fn(err) {
 			return false
@@ -132,7 +134,7 @@ func (r *Retry) Context(ctx context.Context) *Retry {
 func (r *Retry) Backoff(ceil time.Duration) *Retry {
 	const growth = 2
 
-	// start delay at half so that
+	// Start delay at half so that
 	// the first iteration of sleepDur doubles it.
 	delay := r.sleepDur() / growth
 
@@ -206,7 +208,7 @@ func (r *Retry) Jitter(rat float64) *Retry {
 // If you want an error to stop the retry and be logged,
 // use Log() before the Condition.
 func (r *Retry) Log(logFn func(error)) *Retry {
-	return r.Condition(func(err error) bool {
+	return r.Conditions(func(err error) bool {
 		logFn(err)
 		return true
 	})
@@ -215,7 +217,7 @@ func (r *Retry) Log(logFn func(error)) *Retry {
 // Run runs the retry.
 // The retry must not be ran twice.
 func (r *Retry) Run(fn func() error) error {
-	err := errors.Errorf("didn't run a single iteration?")
+	err := errors.New("didn't run a single iteration?")
 	for r.preCheck() {
 		err = fn()
 		if !r.postCheck(err) {
