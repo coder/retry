@@ -127,14 +127,11 @@ func (r *Retry) postCheck(err error) bool {
 func (r *Retry) Attempts(maxAttempts int) *Retry {
 	i := 0
 	r.appendPreCondition(func(err error) error {
-		if maxAttempts == 0 {
-			return nil
-		}
 		if maxAttempts < 0 {
-			return errors.New("negative max attempts?")
+			return errors.Wrap(err, "negative max retry attempts")
 		}
 		if i >= maxAttempts {
-			return errors.Wrap(err, "no attempts left")
+			return errors.Wrap(err, "no retry attempts left")
 		}
 		i++
 		return nil
@@ -158,22 +155,19 @@ func (r *Retry) Context(ctx context.Context) *Retry {
 func (r *Retry) Backoff(ceil time.Duration) *Retry {
 	const growth = 2
 
-	// Start delay at half so that
-	// the first iteration of sleepDur doubles it.
-	delay := r.sleepDur() / growth
-
-	if delay == 0 {
-		panic("retry: delay must not be zero (is it less than 2 nanoseconds?) ")
-	}
+	delay := r.sleepDur()
 
 	r.sleepDur = func() time.Duration {
+		returnedDelay := delay
+
 		if delay < ceil {
 			delay = delay * growth
 			if delay > ceil {
 				delay = ceil
 			}
 		}
-		return delay
+
+		return returnedDelay
 	}
 
 	return r
@@ -193,7 +187,7 @@ func (r *Retry) Timeout(to time.Duration) *Retry {
 	r.appendPreCondition(func(err error) error {
 		now := time.Now()
 		if now.After(deadline) || now.Equal(deadline) {
-			return errors.Wrap(err, "timed out")
+			return errors.Wrap(err, "retry timed out")
 		}
 		return nil
 	})
@@ -207,8 +201,8 @@ func (r *Retry) Timeout(to time.Duration) *Retry {
 // the sleeps will be. For example, a rat of 0.1 and a sleep of 1s restricts the
 // jitter to the range of 900ms to 1.1 seconds.
 func (r *Retry) Jitter(rat float64) *Retry {
-	if !(rat < 1 && rat > 0) {
-		panic("retry: rat must be (0, 1)")
+	if rat <= 0 || rat >= 1 {
+		panic("retry: rat must be in (0, 1)")
 	}
 
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
