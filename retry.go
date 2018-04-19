@@ -186,7 +186,7 @@ func (r *Retry) Timeout(to time.Duration) *Retry {
 
 	r.appendPreCondition(func(err error) error {
 		now := time.Now()
-		if now.After(deadline) || now.Equal(deadline) {
+		if now.Equal(deadline) || now.After(deadline) {
 			return errors.Wrap(err, "retry timed out")
 		}
 		return nil
