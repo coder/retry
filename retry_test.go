@@ -143,7 +143,7 @@ func TestRetry(t *testing.T) {
 		})
 
 		assert.Equal(t, 3, count)
-		assert.Equal(t, io.EOF, errors.Cause(err))
+		assert.Equal(t, context.Canceled, errors.Cause(err))
 	})
 
 	t.Run("Jitter", func(t *testing.T) {
@@ -190,6 +190,21 @@ func TestRetry(t *testing.T) {
 			t.Fatal("should not reach this line.")
 			panic("?")
 		})
+	})
+
+	t.Run("ContinueOnNil", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		var n int
+		New(time.Millisecond).ContinueOnNil().Context(ctx).Run(func() error {
+			if n == 1 {
+				cancel()
+			}
+			n++
+			return nil
+		})
+		assert.Equal(t, 2, n)
 	})
 }
 
