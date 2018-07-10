@@ -229,6 +229,7 @@ func (r *Retry) Jitter(rat float64) *Retry {
 // use Log() after the Condition.
 // If you want an error to stop the retry and be logged,
 // use Log() before the Condition.
+// Deprecated: Log in the Run function instead.
 func (r *Retry) Log(logFn func(error)) *Retry {
 	return r.Conditions(func(err error) bool {
 		logFn(err)
