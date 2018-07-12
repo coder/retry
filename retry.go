@@ -19,6 +19,8 @@ type Retry struct {
 
 	// postConditions are ran after each call to fn.
 	postConditions []Condition
+
+	continueOnNil bool
 }
 
 // New creates a new retry.
@@ -31,7 +33,7 @@ func New(sleep time.Duration) *Retry {
 	}
 
 	r.appendPostConditions(func(err error) bool {
-		return err != nil
+		return r.continueOnNil || err != nil
 	})
 
 	return r
@@ -41,9 +43,7 @@ func New(sleep time.Duration) *Retry {
 // returns nil. You will need to set explicit conditions for the
 // retry to exit.
 func (r *Retry) ContinueOnNil() *Retry {
-	// The first post condition is the one that returns false
-	// if the error is nil so we need to remove it.
-	r.postConditions = r.postConditions[1:]
+	r.continueOnNil = true
 	return r
 }
 
