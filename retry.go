@@ -19,6 +19,8 @@ type Retry struct {
 
 	// postConditions are ran after each call to fn.
 	postConditions []Condition
+
+	continueOnNil bool
 }
 
 // New creates a new retry.
@@ -31,30 +33,31 @@ func New(sleep time.Duration) *Retry {
 	}
 
 	r.appendPostConditions(func(err error) bool {
-		return err != nil
+		return r.continueOnNil || err != nil
 	})
 
+	return r
+}
+
+// ContinueOnNil makes the retry continue even if the run function
+// returns nil. You will need to set explicit conditions for the
+// retry to exit.
+func (r *Retry) ContinueOnNil() *Retry {
+	r.continueOnNil = true
 	return r
 }
 
 func (r *Retry) appendPreCondition(fn preCondition) {
 	r.preConditions = append(r.preConditions, fn)
 }
+
 func (r *Retry) appendPostConditions(fns ...Condition) {
-	for _, fn := range fns {
-		r.postConditions = append(r.postConditions, fn)
-	}
+	r.postConditions = append(r.postConditions, fns...)
 }
 
 // preCondition is a function that decides whether the retry should continue.
-// It takes the previous error as an argument and returns an error
-// if the retry should stop. The error it returns is the error returned to the caller.
-// The reason it takes and returns an error is so that it can return an error describing
-// why the retry stopped. If there was a passed in error, instead of returning a brand new
-// error, it should wrap the error.
-// The passed in error will never be nil. Before the run function runs once, the passed in
-// error will be just be an error saying that the retry was not run even once.
-type preCondition func(error) error
+// It returns an error if the retry should stop and this error is returned to the caller.
+type preCondition func() error
 
 // Condition is a function that decides based on the given error whether to retry.
 type Condition func(error) bool
@@ -100,9 +103,9 @@ func (r *Retry) Condition(fn Condition) *Retry {
 	return r.Conditions(fn)
 }
 
-func (r *Retry) preCheck(err error) error {
+func (r *Retry) preCheck() error {
 	for _, fn := range r.preConditions {
-		perr := fn(err)
+		perr := fn()
 		if perr != nil {
 			return perr
 		}
@@ -126,12 +129,12 @@ func (r *Retry) postCheck(err error) bool {
 // error on any call.
 func (r *Retry) Attempts(maxAttempts int) *Retry {
 	i := 0
-	r.appendPreCondition(func(err error) error {
+	r.appendPreCondition(func() error {
 		if maxAttempts < 0 {
-			return errors.Wrap(err, "negative max retry attempts")
+			return errors.New("negative max retry attempts")
 		}
 		if i >= maxAttempts {
-			return errors.Wrap(err, "no retry attempts left")
+			return errors.New("no retry attempts left")
 		}
 		i++
 		return nil
@@ -141,11 +144,8 @@ func (r *Retry) Attempts(maxAttempts int) *Retry {
 
 // Context bounds the retry to when the context expires.
 func (r *Retry) Context(ctx context.Context) *Retry {
-	r.appendPreCondition(func(err error) error {
-		if ctx.Err() != nil {
-			return errors.Wrap(err, ctx.Err().Error())
-		}
-		return nil
+	r.appendPreCondition(func() error {
+		return ctx.Err()
 	})
 	return r
 }
@@ -184,10 +184,10 @@ func (r *Retry) Timeout(to time.Duration) *Retry {
 
 	deadline := time.Now().Add(to)
 
-	r.appendPreCondition(func(err error) error {
+	r.appendPreCondition(func() error {
 		now := time.Now()
 		if now.Equal(deadline) || now.After(deadline) {
-			return errors.Wrap(err, "retry timed out")
+			return errors.New("retry timed out")
 		}
 		return nil
 	})
@@ -229,6 +229,7 @@ func (r *Retry) Jitter(rat float64) *Retry {
 // use Log() after the Condition.
 // If you want an error to stop the retry and be logged,
 // use Log() before the Condition.
+// Deprecated: Log in the Run function instead.
 func (r *Retry) Log(logFn func(error)) *Retry {
 	return r.Conditions(func(err error) bool {
 		logFn(err)
@@ -239,11 +240,10 @@ func (r *Retry) Log(logFn func(error)) *Retry {
 // Run runs the retry.
 // The retry must not be ran twice.
 func (r *Retry) Run(fn func() error) error {
-	err := errors.New("didn't run a single iteration?")
 	for {
-		perr := r.preCheck(err)
-		if perr != nil {
-			return perr
+		err := r.preCheck()
+		if err != nil {
+			return err
 		}
 
 		err = fn()

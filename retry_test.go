@@ -143,28 +143,24 @@ func TestRetry(t *testing.T) {
 		})
 
 		assert.Equal(t, 3, count)
-		assert.Equal(t, io.EOF, errors.Cause(err))
+		assert.Equal(t, context.Canceled, errors.Cause(err))
 	})
 
 	t.Run("Jitter", func(t *testing.T) {
 		t.Parallel()
-		var count int
 
 		var durs []time.Duration
 		last := time.Now()
-		New(time.Millisecond).Attempts(500).Jitter(0.9991).Run(func() error {
+		New(time.Millisecond * 100).Attempts(100).Jitter(0.1).Run(func() error {
 			durs = append(durs, time.Since(last))
 			last = time.Now()
-			count++
 			return io.EOF
 		})
 
 		avg := avgDurations(durs)
 
-		t.Logf("avg dur: %v", avg)
-
-		if avg < time.Microsecond*900 || avg > time.Microsecond*1200 {
-			t.Errorf("bad avg dur")
+		if avg < time.Millisecond*90 || avg > time.Millisecond*110 {
+			t.Error("bad avg dur", avg)
 		}
 	})
 
@@ -190,6 +186,21 @@ func TestRetry(t *testing.T) {
 			t.Fatal("should not reach this line.")
 			panic("?")
 		})
+	})
+
+	t.Run("ContinueOnNil", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		var n int
+		New(time.Millisecond).ContinueOnNil().Context(ctx).Run(func() error {
+			if n == 1 {
+				cancel()
+			}
+			n++
+			return nil
+		})
+		assert.Equal(t, 2, n)
 	})
 }
 
