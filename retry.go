@@ -3,6 +3,7 @@ package retry
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -237,18 +238,50 @@ func (r *Retry) Log(logFn func(error)) *Retry {
 	})
 }
 
+// Error combines the reason the retry cancelled, and the error
+// from the last call to Run.
+type Error struct {
+	Reason  error
+	LastRun error
+}
+
+// nilIfEmpty returns a nil error if e is effectively nil, or itself.
+func (e Error) nilIfEmpty() error {
+	if e.Reason == nil && e.LastRun == nil {
+		return nil
+	}
+	return e
+}
+
+func (e Error) Error() string {
+	switch {
+	case e.Reason == nil:
+		return e.LastRun.Error()
+	case e.LastRun == nil:
+		return e.Reason.Error()
+	default:
+		return fmt.Sprintf("retry failed because %v, last run error: %v", e.Reason, e.LastRun)
+	}
+}
+
+// Cause returns the error from the last run.
+func (e Error) Cause() error {
+	return e.LastRun
+}
+
 // Run runs the retry.
 // The retry must not be ran twice.
 func (r *Retry) Run(fn func() error) error {
+	var e Error
 	for {
-		err := r.preCheck()
-		if err != nil {
-			return err
+		e.Reason = r.preCheck()
+		if e.Reason != nil {
+			return e.nilIfEmpty()
 		}
 
-		err = fn()
-		if !r.postCheck(err) {
-			return err
+		e.LastRun = fn()
+		if !r.postCheck(e.LastRun) {
+			return e.nilIfEmpty()
 		}
 		time.Sleep(r.sleepDur())
 	}

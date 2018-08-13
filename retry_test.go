@@ -80,13 +80,15 @@ func TestRetry(t *testing.T) {
 
 			const sleep = time.Millisecond * 10
 
-			New(sleep).Timeout(sleep * 5).Run(func() error {
+			var errSomething = errors.New("something")
+			err := New(sleep).Timeout(sleep * 5).Run(func() error {
 				count++
-				return errors.Errorf("asdfasdf")
+				return errSomething
 			})
 
 			assert.Equal(t, 5, count)
 			assert.WithinDuration(t, start.Add(sleep*5), time.Now(), sleep)
+			assert.Equal(t, errSomething, errors.Cause(err))
 		})
 
 		t.Run("returns as soon as error is nil", func(t *testing.T) {
@@ -122,7 +124,7 @@ func TestRetry(t *testing.T) {
 			})
 
 		assert.Equal(t, 5, count)
-		assert.Equal(t, io.ErrShortWrite, err)
+		assert.Equal(t, io.ErrShortWrite, errors.Cause(err))
 
 	})
 
@@ -143,7 +145,7 @@ func TestRetry(t *testing.T) {
 		})
 
 		assert.Equal(t, 3, count)
-		assert.Equal(t, context.Canceled, errors.Cause(err))
+		assert.Equal(t, io.EOF, errors.Cause(err))
 	})
 
 	t.Run("Jitter", func(t *testing.T) {
