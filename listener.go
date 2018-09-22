@@ -1,6 +1,7 @@
 package retry
 
 import (
+	"context"
 	"log"
 	"net"
 	"time"
@@ -11,36 +12,35 @@ type Listener struct {
 	net.Listener
 }
 
-const (
-	initialListenerDelay = 5 * time.Millisecond
-	maxListenerDelay     = time.Second
-)
+func (l Listener) Accept() (net.Conn, error) {
+	b := &Backoff{
+		Floor: 5 * time.Millisecond,
+		Ceil:  time.Second,
+	}
 
-func (l *Listener) Accept() (net.Conn, error) {
-	var retryDelay time.Duration
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+
 	for {
 		c, err := l.Listener.Accept()
-		if err != nil {
-			ne, ok := err.(net.Error)
-			if ok && ne.Temporary() {
-				if retryDelay == 0 {
-					retryDelay = initialListenerDelay
-				} else {
-					retryDelay *= 2
-					if retryDelay > maxListenerDelay {
-						retryDelay = maxListenerDelay
-					}
-				}
-				if l.LogTmpErr == nil {
-					log.Printf("retry: temp error accepting next connection: %v; retrying in %v", err, retryDelay)
-				} else {
-					l.LogTmpErr(err)
-				}
-				time.Sleep(retryDelay)
-				continue
-			}
+		if err == nil {
+			return c, nil
+		}
+
+		ne, ok := err.(net.Error)
+		if !ok || !ne.Temporary() {
 			return nil, err
 		}
-		return c, nil
+
+		if l.LogTmpErr == nil {
+			log.Printf("retry: temp error accepting next connection: %v", err)
+		} else {
+			l.LogTmpErr(err)
+		}
+
+		err = b.Wait(ctx)
+		if err != nil {
+			return nil, err
+		}
 	}
 }

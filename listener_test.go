@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+
 type testListener struct {
 	acceptFn func() (net.Conn, error)
 }
@@ -26,11 +27,11 @@ func (l *testListener) Accept() (net.Conn, error) {
 }
 
 func (l *testListener) Close() error {
-	panic("do not call")
+	panic("stub")
 }
 
 func (l *testListener) Addr() net.Addr {
-	panic("do not call")
+	panic("stub")
 }
 
 type testNetError struct {
