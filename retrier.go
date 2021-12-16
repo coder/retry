@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Retrier represents a retry instance.
+// Retrier implements an exponentially backing off retry instance.
 // Use New instead of creating this object directly.
 type Retrier struct {
 	delay       time.Duration
@@ -39,15 +39,4 @@ func (r *Retrier) Wait(ctx context.Context) bool {
 	case <-ctx.Done():
 		return false
 	}
-}
-
-func (r *Retrier) SetError(err error) {
-	r.err = &err
-}
-
-func (r *Retrier) Error() error {
-	if r.err == nil {
-		return nil
-	}
-	return *r.err
 }
