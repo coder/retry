@@ -9,7 +9,7 @@ go get github.com/coder/retry
 ```
 
 ## Features
-- Offers a `for` loop experience instead of closures
+- A `for` loop experience instead of closures
 - Only 2 exported methods
 - No external dependencies
 
