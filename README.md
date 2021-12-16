@@ -23,7 +23,7 @@ func pingGoogle(ctx context.Context) error {
     r := retry.New(time.Second, time.Second*10)
     for r.Wait(ctx) {
         _, err = http.Get("https://google.com")
-		if err != nil {
+        if err != nil {
 	        continue		
         }   
         break
