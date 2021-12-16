@@ -11,6 +11,7 @@ go get github.com/coder/retry
 ## Features
 - For loop experience instead of closures
 - Only 4 exported methods
+- No external dependencies
 
 ## Examples
 
