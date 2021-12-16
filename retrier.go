@@ -13,7 +13,7 @@ type Retrier struct {
 	err         *error
 }
 
-// New creates an exponential backoff retrier that backs off from floor to ceil duration.
+// New creates a retrier that exponentially backs off from floor to ceil pauses.
 func New(floor, ceil time.Duration) *Retrier {
 	return &Retrier{
 		delay: floor,
