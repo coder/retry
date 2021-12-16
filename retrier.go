@@ -10,7 +10,6 @@ import (
 type Retrier struct {
 	delay       time.Duration
 	floor, ceil time.Duration
-	err         *error
 }
 
 // New creates a retrier that exponentially backs off from floor to ceil pauses.
@@ -23,11 +22,6 @@ func New(floor, ceil time.Duration) *Retrier {
 }
 
 func (r *Retrier) Wait(ctx context.Context) bool {
-	if r.err != nil && *r.err == nil {
-		// We've succeeded!
-		return false
-	}
-
 	const growth = 2
 	r.delay *= growth
 	if r.delay > r.ceil {
