@@ -4,6 +4,10 @@ An expressive, flexible retry package for Go.
 
 [![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/go.coder.com/retry)
 
+```
+go get github.com/coder/retry
+```
+
 ## Features
 
 - Backoff helper
