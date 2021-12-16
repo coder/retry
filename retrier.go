@@ -27,6 +27,7 @@ func (r *Retrier) Wait(ctx context.Context) bool {
 		// We've succeeded!
 		return false
 	}
+
 	const growth = 2
 	r.delay *= growth
 	if r.delay > r.ceil {
