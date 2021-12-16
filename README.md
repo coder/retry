@@ -1,6 +1,6 @@
 # retry
 
-A small retry package for Go.
+An exponentially backing off retry package for Go.
 
 [![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/coder/retry)
 
@@ -9,7 +9,7 @@ go get github.com/coder/retry
 ```
 
 ## Features
-- For loop experience instead of closures
+- Offers a `for` loop experience instead of closures
 - Only 2 exported methods
 - No external dependencies
 
