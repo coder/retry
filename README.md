@@ -1,6 +1,6 @@
 # retry
 
-An expressive, flexible retry package for Go.
+A small retry package for Go.
 
 [![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/coder/retry)
 
