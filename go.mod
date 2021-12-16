@@ -1,4 +1,4 @@
-module github.com/coder/retry/v2
+module github.com/coder/retry
 
 go 1.17
 
