@@ -20,30 +20,30 @@ second.
 ```go
 func pingGoogle(ctx context.Context) error {
 	var err error
-    r := retry.New(time.Second, time.Second*10)
-    for r.Wait(ctx) {
-        _, err = http.Get("https://google.com")
-        if err != nil {
-	        continue		
-        }   
-        break
-    }
-    return err
+	
+	for r := retry.New(time.Second, time.Second*10); r.Wait(ctx); {
+		_, err = http.Get("https://google.com")
+		if err != nil {
+			continue
+		}
+		break
+	}
+	return err
 }
 ```
 
 Wait for connectivity to google.com, checking at most 10 times.
 ```go
 func pingGoogle(ctx context.Context) error {
-    var err error
-    r := retry.New(time.Second, time.Second*10)
-    for n := 0; r.Wait(ctx) && n < 10; n++ {
-        _, err = http.Get("https://google.com")
-        if err != nil {
-            continue
-        }
+	var err error
+	
+	for r := retry.New(time.Second, time.Second*10); n := 0; r.Wait(ctx) && n < 10; n++ {
+		_, err = http.Get("https://google.com")
+		if err != nil {
+			continue
+		}
 		break
 	}
-    return err
+	return err
 }
 ```

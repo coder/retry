@@ -1,0 +1,4 @@
+github.com/ammario/cache v0.0.0-20211225003510-c969ec7f4766 h1:iptK1emgWyG+C67ygjlxqu5wLEPOQfy7xDx3M6qJbGs=
+github.com/ammario/cache v0.0.0-20211225003510-c969ec7f4766/go.mod h1:qzIfV71nnVFkGq69iQ1OrwCDQTvqpvaUiu1Yz4xqpgI=
+github.com/ammario/guard v0.0.0-20211225011814-e0e141dcbc37 h1:CnH2cF6w2k77PQcjcK9dp7x3kjaTM6rE7LSr+1frJQ0=
+github.com/ammario/guard v0.0.0-20211225011814-e0e141dcbc37/go.mod h1:AADLzbLRXuBHZOn27mdHt67jRKZxbxf813//j0QsDds=
