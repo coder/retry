@@ -15,7 +15,7 @@ type Retrier struct {
 // New creates a retrier that exponentially backs off from floor to ceil pauses.
 func New(floor, ceil time.Duration) *Retrier {
 	return &Retrier{
-		delay: floor,
+		delay: 0,
 		floor: floor,
 		ceil:  ceil,
 	}
@@ -29,6 +29,9 @@ func (r *Retrier) Wait(ctx context.Context) bool {
 	}
 	select {
 	case <-time.After(r.delay):
+		if r.delay < r.floor {
+			r.delay = r.floor
+		}
 		return true
 	case <-ctx.Done():
 		return false
