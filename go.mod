@@ -1,3 +1,3 @@
 module github.com/coder/retry
 
-go 1.17
+go 1.20

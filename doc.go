@@ -1,2 +1,2 @@
-// Package retry runs a failable function until it succeeds.
+// Package retry runs a fallible block of code until it succeeds.
 package retry
