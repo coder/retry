@@ -21,12 +21,20 @@ func New(floor, ceil time.Duration) *Retrier {
 	}
 }
 
-func (r *Retrier) Wait(ctx context.Context) bool {
+// Next returns the next delay duration without modifying the retry state.
+// This is useful for logging.
+func (r *Retrier) Next() time.Duration {
 	const growth = 2
-	r.delay *= growth
-	if r.delay > r.ceil {
-		r.delay = r.ceil
+	delay := r.delay * growth
+	if delay > r.ceil {
+		delay = r.ceil
 	}
+	return delay
+}
+
+// Wait waits for the next retry and returns true if the retry should be attempted.
+func (r *Retrier) Wait(ctx context.Context) bool {
+	r.delay = r.Next()
 	select {
 	case <-time.After(r.delay):
 		if r.delay < r.floor {

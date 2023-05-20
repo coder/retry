@@ -5,7 +5,7 @@ An exponentially backing off retry package for Go.
 [![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/coder/retry)
 
 ```
-go get github.com/coder/retry
+go get github.com/coder/retry@latest
 ```
 
 ## Features
