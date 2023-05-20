@@ -5,8 +5,6 @@ import (
 	"errors"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/require"
 )
 
 func TestFunc(t *testing.T) {
@@ -14,14 +12,17 @@ func TestFunc(t *testing.T) {
 
 	passAfter := time.Now().Add(time.Second)
 
-	dog, err := Func[string](func() (string, error) {
+	dog, err := Func(func() (string, error) {
 		if time.Now().Before(passAfter) {
 			return "", errors.New("not yet")
 		}
 		return "dog", nil
-	}).Do(context.Background(), New(time.Millisecond, time.Second))
+	},
+		New(time.Millisecond, time.Millisecond))(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	require.Equal(t, "dog", dog)
+	if dog != "dog" {
+		t.Fatal("expected dog")
+	}
 }
