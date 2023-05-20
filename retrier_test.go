@@ -29,3 +29,12 @@ func TestFirstTryImmediately(t *testing.T) {
 		t.Fatalf("attempt took too long")
 	}
 }
+
+func TestReset(t *testing.T) {
+	r := New(time.Hour, time.Hour)
+	// Should be immediate
+	ctx := context.Background()
+	r.Wait(ctx)
+	r.Reset()
+	r.Wait(ctx)
+}

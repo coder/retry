@@ -37,3 +37,8 @@ func (r *Retrier) Wait(ctx context.Context) bool {
 		return false
 	}
 }
+
+// Reset resets the retrier to its initial state.
+func (r *Retrier) Reset() {
+	r.delay = 0
+}

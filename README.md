@@ -10,7 +10,7 @@ go get github.com/coder/retry
 
 ## Features
 - A `for` loop experience instead of closures
-- Only 2 exported methods
+- Only 3 exported methods
 - No external dependencies
 
 ## Examples
