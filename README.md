@@ -5,7 +5,7 @@ An exponentially backing off retry package for Go.
 [![GoDoc](https://godoc.org/github.com/golang/gddo?status.svg)](https://godoc.org/github.com/coder/retry)
 
 ```
-go get github.com/coder/retry
+go get github.com/coder/retry@latest
 ```
 
 ## Features
@@ -16,7 +16,7 @@ go get github.com/coder/retry
 ## Examples
 
 Wait for connectivity to google.com, checking at most once every
-second.
+second:
 ```go
 func pingGoogle(ctx context.Context) error {
 	var err error
@@ -32,7 +32,7 @@ func pingGoogle(ctx context.Context) error {
 }
 ```
 
-Wait for connectivity to google.com, checking at most 10 times.
+Wait for connectivity to google.com, checking at most 10 times:
 ```go
 func pingGoogle(ctx context.Context) error {
 	var err error
