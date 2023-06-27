@@ -8,27 +8,29 @@ An exponentially backing off retry package for Go.
 go get github.com/coder/retry@latest
 ```
 
-## Features
-- A `for` loop experience instead of closures
-- Only 3 exported methods
-- No external dependencies
+`retry` promotes control flow using `for`/`goto` instead of callbacks, which are unwieldy in Go.
 
 ## Examples
 
 Wait for connectivity to google.com, checking at most once every
 second:
+
 ```go
 func pingGoogle(ctx context.Context) error {
 	var err error
-	
-	for r := retry.New(time.Second, time.Second*10); r.Wait(ctx); {
-		_, err = http.Get("https://google.com")
-		if err != nil {
-			continue
+
+	r := retry.New(time.Second, time.Second*10);
+
+  retry:
+	_, err = http.Get("https://google.com")
+	if err != nil {
+		if r.Wait(ctx) {
+			goto retry
 		}
-		break
+		return err
 	}
-	return err
+
+	return nil
 }
 ```
 
