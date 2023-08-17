@@ -8,7 +8,7 @@ An exponentially backing off retry package for Go.
 go get github.com/coder/retry@latest
 ```
 
-`retry` promotes control flow using `for`/`goto` instead of callbacks, which are unwieldy in Go.
+`retry` promotes control flow using `for`/`goto` instead of callbacks.
 
 ## Examples
 
@@ -20,6 +20,12 @@ func pingGoogle(ctx context.Context) error {
 	var err error
 
 	r := retry.New(time.Second, time.Second*10);
+
+	// Jitter is useful when the majority of clients to a service use
+	// the same backoff policy.
+	//
+	// It is provided as a standard deviation.
+	r.Jitter = 0.1
 
   retry:
 	_, err = http.Get("https://google.com")

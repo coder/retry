@@ -2,6 +2,7 @@ package retry
 
 import (
 	"context"
+	"math"
 	"testing"
 	"time"
 )
@@ -37,4 +38,54 @@ func TestReset(t *testing.T) {
 	r.Wait(ctx)
 	r.Reset()
 	r.Wait(ctx)
+}
+
+func TestJitter_Normal(t *testing.T) {
+	t.Parallel()
+
+	r := New(time.Millisecond, time.Millisecond)
+	r.Jitter = 0.5
+
+	var (
+		sum   time.Duration
+		waits []float64
+		ctx   = context.Background()
+	)
+	for i := 0; i < 1000; i++ {
+		start := time.Now()
+		r.Wait(ctx)
+		took := time.Since(start)
+		waits = append(waits, (took.Seconds() * 1000))
+		sum += took
+	}
+
+	avg := float64(sum) / float64(len(waits))
+	std := stdDev(waits)
+	if std > avg*0.1 {
+		t.Fatalf("standard deviation too high: %v", std)
+	}
+
+	t.Logf("average: %v", time.Duration(avg))
+	t.Logf("std dev: %v", std)
+	t.Logf("sample: %v", waits[len(waits)-10:])
+}
+
+// stdDev returns the standard deviation of the sample.
+func stdDev(sample []float64) float64 {
+	if len(sample) == 0 {
+		return 0
+	}
+	mean := 0.0
+	for _, v := range sample {
+		mean += v
+	}
+	mean /= float64(len(sample))
+
+	variance := 0.0
+	for _, v := range sample {
+		variance += math.Pow(v-mean, 2)
+	}
+	variance /= float64(len(sample))
+
+	return math.Sqrt(variance)
 }
