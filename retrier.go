@@ -57,7 +57,7 @@ func applyJitter(d time.Duration, jitter float64) time.Duration {
 // Wait returns after min(Delay*Growth, Ceil) or ctx is cancelled.
 // The first call to Wait will return immediately.
 func (r *Retrier) Wait(ctx context.Context) bool {
-	r.Delay *= time.Duration(float64(r.Delay) * r.Rate)
+	r.Delay = time.Duration(float64(r.Delay) * r.Rate)
 
 	r.Delay = applyJitter(r.Delay, r.Jitter)
 

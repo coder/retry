@@ -31,6 +31,27 @@ func TestFirstTryImmediately(t *testing.T) {
 	}
 }
 
+func TestScalesExponentially(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	r := New(time.Second, time.Second*10)
+	r.Rate = 2
+
+	start := time.Now()
+
+	for i := 0; i < 3; i++ {
+		t.Logf("delay: %v", r.Delay)
+		r.Wait(ctx)
+		t.Logf("sinceStart: %v", time.Since(start).Round(time.Second))
+	}
+
+	sinceStart := time.Since(start).Round(time.Second)
+	if sinceStart != time.Second*6 {
+		t.Fatalf("did not scale correctly: %v", sinceStart)
+	}
+}
+
 func TestReset(t *testing.T) {
 	r := New(time.Hour, time.Hour)
 	// Should be immediate
